@@ -35,10 +35,10 @@ const Navbar = () => {
       }}>
 
         {/* Logo */}
-        <Link to="/home" style={{ display: "flex", alignItems: "center", gap: 4, textDecoration: "none", flexShrink: 0 }}>
-          <MdEventNote className="nb-logo-icon" style={{ fontSize: 28, color: "#2563eb" }} />
-          <span className="nb-logo-text" style={{ fontSize: 36, fontWeight: 900, fontStyle: "italic", color: "#2563eb", letterSpacing: "-1px", lineHeight: 1.2 }}>Event</span>
-          <span className="nb-logo-text" style={{ fontSize: 36, fontWeight: 900, fontStyle: "italic", color: "#7c3aed", letterSpacing: "-1px", lineHeight: 1.2 }}>Hub</span>
+        <Link to="/home" style={{ display: "flex", alignItems: "center", gap: 4, textDecoration: "none", flexShrink: 0, padding: "2px 0" }}>
+          <MdEventNote className="nb-logo-icon" style={{ fontSize: 28, color: "#0891b2" }} />
+          <span className="nb-logo-text" style={{ fontSize: 36, fontWeight: 900, fontStyle: "italic", color: "#0891b2", letterSpacing: "-1px", lineHeight: 1.3 }}>Event</span>
+          <span className="nb-logo-text" style={{ fontSize: 36, fontWeight: 900, fontStyle: "italic", color: "#1a6fa8", letterSpacing: "-1px", lineHeight: 1.3 }}>Hub</span>
         </Link>
 
         {/* Desktop: links + auth — hidden on mobile */}
@@ -133,6 +133,7 @@ const Navbar = () => {
           .nb-logo-text {
             font-size: 16px !important;
             letter-spacing: -0.5px !important;
+            line-height: 1.4 !important;
           }
           .nb-mobile button {
             font-size: 18px !important;

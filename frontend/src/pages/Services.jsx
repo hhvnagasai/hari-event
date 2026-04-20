@@ -230,7 +230,7 @@ const Services = () => {
       <section className="max-w-7xl mx-auto px-3 py-4 md:px-6 md:py-8" style={{ backgroundColor: '#f3f4f6' }}>
 
         {/* ── Top Filter Bar ── */}
-        <div style={{
+        <div className="filter-card" style={{
           backgroundColor: 'white',
           borderRadius: '16px',
           padding: '20px 24px',
@@ -367,22 +367,24 @@ const Services = () => {
                               <Icon style={{ fontSize: '48px', color: '#9ca3af' }} />
                             </div>
                           )}
-                          <div style={{
-                            position: 'absolute',
-                            bottom: '12px',
-                            left: '12px',
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                            backgroundColor: 'white',
-                          }}>
-                            <Icon className={colorClass.split(' ')[1]} />
-                          </div>
-                          {/* Rating Badge */}
+                          {/* Event type badge — top left */}
+                          {!isBooked && !isExpired && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '12px',
+                              left: '12px',
+                              backgroundColor: s.eventType === 'ticketed' ? '#1a6fa8' : '#0891b2',
+                              padding: '4px 10px',
+                              borderRadius: '20px',
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              color: 'white',
+                            }}>
+                              {s.eventType === 'ticketed' ? '🎫 Ticketed' : '🤝 Full Service'}
+                            </div>
+                          )}
+                          {/* Rating Badge — top right */}
+                          {s.rating > 0 && (
                           <div style={{
                             position: 'absolute',
                             top: '12px',
@@ -397,8 +399,9 @@ const Services = () => {
                             fontWeight: '500',
                           }}>
                             <FaStar style={{ color: '#fbbf24' }} />
-                            {s.rating > 0 ? s.rating.toFixed(1) : 'New'}
+                            {s.rating.toFixed(1)}
                           </div>
+                          )}
                           {/* Booked Badge */}
                           {isBooked && (
                             <div style={{
@@ -597,6 +600,26 @@ const Services = () => {
           .services-grid {
             grid-template-columns: repeat(2, 1fr) !important;
             gap: 12px !important;
+          }
+          .filter-card {
+            padding: 10px 12px !important;
+            margin-bottom: 12px !important;
+            border-radius: 10px !important;
+          }
+          .filter-card label {
+            font-size: 11px !important;
+            margin-bottom: 3px !important;
+          }
+          .filter-card input[type="text"] {
+            padding: 6px 8px 6px 28px !important;
+            font-size: 12px !important;
+          }
+          .filter-card input[type="range"] {
+            height: 4px !important;
+          }
+          .filter-card button {
+            padding: 4px 8px !important;
+            font-size: 11px !important;
           }
           .service-card .service-card-img {
             height: 110px !important;

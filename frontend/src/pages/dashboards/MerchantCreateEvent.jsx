@@ -364,8 +364,8 @@ const MerchantCreateEvent = () => {
 
       <section className="mb-6">
         <h2 className="text-2xl md:text-3xl font-semibold">Create Event</h2>
-        <div className="flex items-center gap-2 mt-1">
-          <p className="text-gray-600">Fields marked with * are required</p>
+        <div className="flex flex-wrap items-center gap-2 mt-1">
+          <p className="text-gray-600 text-sm">Fields marked with * are required</p>
           {eventType && (
             <span
               className={`inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-xs font-semibold ${
@@ -421,7 +421,7 @@ const MerchantCreateEvent = () => {
             </div>
 
             {/* Category + Price */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                 <div className="relative">
@@ -526,7 +526,7 @@ const MerchantCreateEvent = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Event Status *
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <label className="relative flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all hover:bg-purple-50 hover:border-purple-400 bg-white">
                       <input
                         type="radio"
@@ -562,7 +562,7 @@ const MerchantCreateEvent = () => {
                 </div>
 
                 {/* Date + Time */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       <FiCalendar className="inline mr-1" />
@@ -624,58 +624,55 @@ const MerchantCreateEvent = () => {
 
                   <div className="space-y-3">
                     {ticketTypes.map((ticket, i) => (
-                      <div key={i} className="flex items-center gap-2 bg-white border border-purple-200 rounded-lg px-3 py-2.5 shadow-sm">
-                        {/* Icon by name */}
-                        <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-purple-100">
-                          {ticket.name.toLowerCase() === "vip"
-                            ? <FaCrown className="text-yellow-500 text-sm" />
-                            : <FaUser className="text-purple-500 text-sm" />
-                          }
-                        </div>
-
-                        {/* Name */}
-                        <input
-                          type="text"
-                          value={ticket.name}
-                          onChange={(e) => handleTicketTypeChange(i, "name", e.target.value)}
-                          placeholder="Type (e.g. VIP)"
-                          className="flex-1 min-w-0 border-0 outline-none text-sm font-medium text-gray-800 bg-transparent placeholder-gray-400"
-                        />
-
-                        {/* Price */}
-                        <div className="flex items-center gap-1 border-l pl-2">
-                          <span className="text-gray-500 text-xs">₹</span>
+                      <div key={i} className="bg-white border border-purple-200 rounded-lg px-3 py-2 shadow-sm">
+                        {/* Row 1: Icon + Name + Delete */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center bg-purple-100">
+                            {ticket.name.toLowerCase() === "vip"
+                              ? <FaCrown className="text-yellow-500 text-xs" />
+                              : <FaUser className="text-purple-500 text-xs" />
+                            }
+                          </div>
                           <input
-                            type="number"
-                            value={ticket.price}
-                            onChange={(e) => handleTicketTypeChange(i, "price", e.target.value)}
-                            placeholder="Price"
-                            min="0"
-                            className="w-20 border-0 outline-none text-sm text-gray-700 bg-transparent"
+                            type="text"
+                            value={ticket.name}
+                            onChange={(e) => handleTicketTypeChange(i, "name", e.target.value)}
+                            placeholder="Ticket type (e.g. VIP)"
+                            className="flex-1 min-w-0 border border-gray-200 rounded px-2 py-1 text-sm font-medium text-gray-800 bg-white outline-none focus:border-purple-400"
                           />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTicketType(i)}
+                            className="flex-shrink-0 p-1 text-red-400 hover:text-red-600 transition"
+                          >
+                            <FiTrash2 size={14} />
+                          </button>
                         </div>
-
-                        {/* Quantity */}
-                        <div className="flex items-center gap-1 border-l pl-2">
-                          <FaTicketAlt className="text-gray-400 text-xs" />
-                          <input
-                            type="number"
-                            value={ticket.quantity}
-                            onChange={(e) => handleTicketTypeChange(i, "quantity", e.target.value)}
-                            placeholder="Qty"
-                            min="1"
-                            className="w-16 border-0 outline-none text-sm text-gray-700 bg-transparent"
-                          />
+                        {/* Row 2: Price + Quantity */}
+                        <div className="flex gap-3">
+                          <div className="flex-1">
+                            <label className="text-xs text-gray-500 mb-1 block">Price (₹)</label>
+                            <input
+                              type="number"
+                              value={ticket.price}
+                              onChange={(e) => handleTicketTypeChange(i, "price", e.target.value)}
+                              placeholder="0"
+                              min="0"
+                              className="w-full border border-gray-200 rounded px-2 py-1 text-sm text-gray-700 outline-none focus:border-purple-400"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-xs text-gray-500 mb-1 block">Quantity</label>
+                            <input
+                              type="number"
+                              value={ticket.quantity}
+                              onChange={(e) => handleTicketTypeChange(i, "quantity", e.target.value)}
+                              placeholder="0"
+                              min="1"
+                              className="w-full border border-gray-200 rounded px-2 py-1 text-sm text-gray-700 outline-none focus:border-purple-400"
+                            />
+                          </div>
                         </div>
-
-                        {/* Remove */}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTicketType(i)}
-                          className="flex-shrink-0 p-1 text-red-400 hover:text-red-600 transition"
-                        >
-                          <FiTrash2 size={14} />
-                        </button>
                       </div>
                     ))}
                   </div>

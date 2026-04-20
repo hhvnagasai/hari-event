@@ -424,7 +424,7 @@ const MerchantBookings = () => {
                         <div className="space-y-1">
                           {booking.addons.map((addon, idx) => (
                             <div key={idx} className="text-xs">
-                              {addon.name}: {formatCurrency(addon.price)}
+                              {addon.name}{addon.quantity && addon.quantity > 1 ? ` ×${addon.quantity}` : ''}: {formatCurrency(addon.total || addon.price * (addon.quantity || 1))}
                             </div>
                           ))}
                         </div>
@@ -666,8 +666,11 @@ const MerchantBookings = () => {
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Add-ons</p>
                   {selectedBooking.addons.map((a, i) => (
                     <div key={i} className="flex justify-between text-sm">
-                      <span className="text-gray-700">{a.name}</span>
-                      <span className="font-medium text-gray-900">₹{Number(a.price || 0).toLocaleString('en-IN')}</span>
+                      <span className="text-gray-700">
+                        {a.name}
+                        {a.quantity && a.quantity > 1 ? ` × ${a.quantity}` : ''}
+                      </span>
+                      <span className="font-medium text-gray-900">₹{Number(a.total || (a.price * (a.quantity || 1)) || 0).toLocaleString('en-IN')}</span>
                     </div>
                   ))}
                 </div>
@@ -676,10 +679,34 @@ const MerchantBookings = () => {
               {/* Pricing */}
               <div className="bg-blue-50 rounded-xl p-4 space-y-2">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Pricing</p>
-                {selectedBooking.servicePrice > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Base Price</span>
-                    <span>₹{Number(selectedBooking.servicePrice).toLocaleString('en-IN')}</span>
+                {/* Base event price */}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Event Price</span>
+                  <span>₹{(() => {
+                    const sp = Number(selectedBooking.servicePrice || selectedBooking.basePrice || selectedBooking.eventPrice || 0);
+                    if (sp > 0) return sp.toLocaleString('en-IN');
+                    // Fallback: total minus addons
+                    const addonsTotal = (selectedBooking.addons || []).reduce((sum, a) => sum + Number(a.total || (a.price * (a.quantity || 1)) || 0), 0);
+                    const total = Number(selectedBooking.totalAmount || selectedBooking.totalPrice || 0);
+                    const discount = Number(selectedBooking.discount || selectedBooking.discountAmount || 0);
+                    return Math.max(0, total + discount - addonsTotal).toLocaleString('en-IN');
+                  })()}</span>
+                </div>
+                {/* Add-ons subtotal */}
+                {selectedBooking.addons?.length > 0 && (() => {
+                  const addonsTotal = selectedBooking.addons.reduce((sum, a) => sum + Number(a.total || (a.price * (a.quantity || 1)) || 0), 0);
+                  return addonsTotal > 0 ? (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Add-ons</span>
+                      <span>₹{addonsTotal.toLocaleString('en-IN')}</span>
+                    </div>
+                  ) : null;
+                })()}
+                {/* Discount */}
+                {(selectedBooking.discount > 0 || selectedBooking.discountAmount > 0) && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Discount {selectedBooking.promoCode ? `(${selectedBooking.promoCode})` : ''}</span>
+                    <span>-₹{Number(selectedBooking.discount || selectedBooking.discountAmount || 0).toLocaleString('en-IN')}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm font-bold border-t pt-2">

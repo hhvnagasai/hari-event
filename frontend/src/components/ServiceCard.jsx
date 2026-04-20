@@ -29,9 +29,9 @@ const ServiceCard = ({ service }) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col h-full">
+    <div className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col h-full service-home-card">
       {/* Image */}
-      <div className="relative h-48 overflow-hidden">
+      <div className="relative overflow-hidden service-home-card-img" style={{ height: '192px' }}>
         <img
           src={service.images[0]?.url || "/placeholder.jpg"}
           alt={service.title}
@@ -57,16 +57,16 @@ const ServiceCard = ({ service }) => {
       </div>
 
       {/* Content */}
-      <div className="p-5 flex flex-col flex-grow">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1">
+      <div className="p-5 flex flex-col flex-grow service-home-card-body">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1 service-home-card-title">
           {service.title}
         </h3>
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2 flex-grow">
+        <p className="text-gray-600 text-sm mb-4 line-clamp-2 flex-grow service-home-card-desc">
           {service.description}
         </p>
 
         {/* Price */}
-        <div className="mb-4">
+        <div className="mb-4 service-home-card-price">
           <span className="text-2xl font-bold text-amber-600">
             {formatPrice(service.price)}
           </span>
@@ -76,7 +76,7 @@ const ServiceCard = ({ service }) => {
         {/* View Details Button */}
         <Link
           to={`/service/${service._id}`}
-          className="w-full bg-gray-900 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-amber-600 transition-colors duration-300"
+          className="w-full bg-gray-900 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-amber-600 transition-colors duration-300 service-home-card-btn"
         >
           View Details
           <FaArrowRight className="text-sm" />

@@ -52,6 +52,7 @@ const HeroSection = () => {
   return (
     <section
       style={{ position: "relative", overflow: "hidden", minHeight: 520 }}
+      className="hero-section"
       onMouseEnter={() => { pausedRef.current = true;  }}
       onMouseLeave={() => { pausedRef.current = false; }}
     >
@@ -80,7 +81,7 @@ const HeroSection = () => {
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top,rgba(37,99,235,.18) 0%,transparent 60%)", zIndex: 1 }} />
 
       {/* ── Content ── */}
-      <div className="relative container mx-auto px-6 py-24 md:py-32" style={{ zIndex: 2 }}>
+      <div className="relative container mx-auto px-4 py-10 md:py-32 hero-content" style={{ zIndex: 2 }}>
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 border border-white/50 text-sm text-cyan-900 mb-6 backdrop-blur-sm">
             <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />

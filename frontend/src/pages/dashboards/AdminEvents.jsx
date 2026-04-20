@@ -50,9 +50,9 @@ const AdminEvents = () => {
 
   const getEventTypeBadge = (eventType) => {
     if (eventType === "ticketed") {
-      return { label: "Ticketed", className: "bg-purple-100 text-purple-700", icon: "🎫" };
+      return { label: "Ticketed", className: "bg-cyan-100 text-cyan-800", icon: "🎫" };
     }
-    return { label: "Full Service", className: "bg-blue-100 text-blue-700", icon: "🤝" };
+    return { label: "Full Service", className: "bg-teal-100 text-teal-700", icon: "🤝" };
   };
 
   return (
@@ -201,7 +201,7 @@ const AdminEvents = () => {
             )}
             {/* Badges */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-              <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, backgroundColor: '#ede9fe', color: '#7c3aed' }}>
+              <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, backgroundColor: '#dbeafe', color: '#1a6fa8' }}>
                 {getEventTypeBadge(selectedEvent.eventType).icon} {getEventTypeBadge(selectedEvent.eventType).label}
               </span>
               <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, backgroundColor: '#dcfce7', color: '#16a34a' }}>
@@ -227,7 +227,7 @@ const AdminEvents = () => {
             {/* Ticket Types */}
             {selectedEvent.eventType === 'ticketed' && selectedEvent.ticketTypes?.length > 0 && (
               <div style={{ marginTop: 12, padding: 12, backgroundColor: '#faf5ff', borderRadius: 10 }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: '#7c3aed', marginBottom: 8 }}>Ticket Types</p>
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#1a6fa8', marginBottom: 8 }}>Ticket Types</p>
                 {selectedEvent.ticketTypes.map((t, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#374151', marginBottom: 4 }}>
                     <span>{t.name}</span><span style={{ fontWeight: 600 }}>{formatPrice(t.price)}</span>

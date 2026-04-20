@@ -396,13 +396,13 @@ const UserBrowseEvents = () => {
                 })()}
                 <div style={{
                   position: 'absolute',
-                  top: '12px',
-                  left: '12px',
+                  top: isMobile ? '6px' : '12px',
+                  left: isMobile ? '6px' : '12px',
                   backgroundColor: '#a2783a',
                   color: 'white',
-                  padding: '4px 12px',
+                  padding: isMobile ? '2px 6px' : '4px 12px',
                   borderRadius: '20px',
-                  fontSize: '12px',
+                  fontSize: isMobile ? '9px' : '12px',
                   fontWeight: '500'
                 }}>
                   {event.category || "Event"}
@@ -418,10 +418,10 @@ const UserBrowseEvents = () => {
                   const c = colorMap[s.label] || { bg: "#4b5563", color: "#fff" };
                   return (
                     <div style={{
-                      position: 'absolute', bottom: '12px', left: '12px',
+                      position: 'absolute', bottom: isMobile ? '6px' : '12px', left: isMobile ? '6px' : '12px',
                       backgroundColor: c.bg, color: c.color,
-                      padding: '3px 10px', borderRadius: '20px',
-                      fontSize: '11px', fontWeight: '600'
+                      padding: isMobile ? '1px 5px' : '3px 10px', borderRadius: '20px',
+                      fontSize: isMobile ? '8px' : '11px', fontWeight: '600'
                     }}>
                       {s.label}
                     </div>
@@ -434,13 +434,13 @@ const UserBrowseEvents = () => {
                   }}
                   style={{
                     position: 'absolute',
-                    top: '12px',
-                    right: '12px',
+                    top: isMobile ? '6px' : '12px',
+                    right: isMobile ? '6px' : '12px',
                     backgroundColor: 'rgba(255,255,255,0.9)',
                     border: 'none',
                     borderRadius: '50%',
-                    width: '36px',
-                    height: '36px',
+                    width: isMobile ? '26px' : '36px',
+                    height: isMobile ? '26px' : '36px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -450,9 +450,9 @@ const UserBrowseEvents = () => {
                   title={isEventSaved(event._id) ? "Remove from saved" : "Save event"}
                 >
                   {isEventSaved(event._id) ? (
-                    <BsBookmarkHeartFill style={{ color: '#ec4899', fontSize: '18px' }} />
+                    <BsBookmarkHeartFill style={{ color: '#ec4899', fontSize: isMobile ? '12px' : '18px' }} />
                   ) : (
-                    <BsBookmarkHeart style={{ color: '#6b7280', fontSize: '18px' }} />
+                    <BsBookmarkHeart style={{ color: '#6b7280', fontSize: isMobile ? '12px' : '18px' }} />
                   )}
                 </button>
               </div>

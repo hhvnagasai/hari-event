@@ -409,70 +409,34 @@ const TicketModal = ({ booking, isOpen, onClose }) => {
             <div style={{ 
               background: "#ffffff", 
               borderRadius: "16px", 
-              padding: "20px", 
+              padding: "14px", 
               marginBottom: "24px", 
               position: "relative", 
               zIndex: 1, 
               boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
               border: "2px solid #e5e7eb"
             }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <FaCalendar style={{ color: "#667eea", fontSize: "18px" }} />
-                  <div>
-                    <p style={{ 
-                      fontSize: "12px", 
-                      color: "#374151", 
-                      margin: 0, 
-                      textTransform: "uppercase", 
-                      letterSpacing: "1px",
-                      fontWeight: "700"
-                    }}>Date</p>
-                    <p style={{ 
-                      fontWeight: "800", 
-                      margin: "2px 0 0 0", 
-                      fontSize: "16px",
-                      color: "#000000"
-                    }}>{ticketData.eventDate}</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <FaCalendar style={{ color: "#667eea", fontSize: "14px", flexShrink: 0 }} />
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: "10px", color: "#374151", margin: 0, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: "700" }}>Date</p>
+                    <p style={{ fontWeight: "800", margin: "2px 0 0 0", fontSize: "12px", color: "#000000", overflow: "hidden", textOverflow: "ellipsis" }}>{ticketData.eventDate}</p>
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <FaQrcode style={{ color: "#667eea", fontSize: "18px" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <FaQrcode style={{ color: "#667eea", fontSize: "14px", flexShrink: 0 }} />
                   <div>
-                    <p style={{ 
-                      fontSize: "12px", 
-                      color: "#374151", 
-                      margin: 0, 
-                      textTransform: "uppercase", 
-                      letterSpacing: "1px",
-                      fontWeight: "700"
-                    }}>Time</p>
-                    <p style={{ 
-                      fontWeight: "800", 
-                      margin: "2px 0 0 0", 
-                      fontSize: "16px",
-                      color: "#000000"
-                    }}>{ticketData.eventTime}</p>
+                    <p style={{ fontSize: "10px", color: "#374151", margin: 0, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: "700" }}>Time</p>
+                    <p style={{ fontWeight: "800", margin: "2px 0 0 0", fontSize: "14px", color: "#000000" }}>{ticketData.eventTime}</p>
                   </div>
                 </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <FaMapMarkerAlt style={{ color: "#667eea", fontSize: "18px" }} />
-                <div style={{ flex: 1 }}>
-                  <p style={{ 
-                    fontSize: "12px", 
-                    color: "#374151", 
-                    margin: 0, 
-                    textTransform: "uppercase", 
-                    letterSpacing: "1px",
-                    fontWeight: "700"
-                  }}>Venue</p>
-                  <p style={{ 
-                    fontWeight: "800", 
-                    margin: "2px 0 0 0", 
-                    fontSize: "16px",
-                    color: "#000000"
-                  }}>{ticketData.location}</p>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <FaMapMarkerAlt style={{ color: "#667eea", fontSize: "14px", flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: "10px", color: "#374151", margin: 0, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: "700" }}>Venue</p>
+                  <p style={{ fontWeight: "800", margin: "2px 0 0 0", fontSize: "13px", color: "#000000", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ticketData.location}</p>
                 </div>
               </div>
             </div>
@@ -524,28 +488,31 @@ const TicketModal = ({ booking, isOpen, onClose }) => {
                 }
                 return null;
               })()}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
               <div style={{ 
                 textAlign: "center", 
                 background: "#ffffff", 
                 borderRadius: "12px", 
-                padding: "16px",
+                padding: "10px 6px",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                 border: "2px solid #e5e7eb"
               }}>
                 <p style={{ 
-                  fontSize: "11px", 
+                  fontSize: "9px", 
                   color: "#374151", 
                   textTransform: "uppercase", 
-                  letterSpacing: "1px", 
+                  letterSpacing: "0.5px", 
                   margin: 0,
                   fontWeight: "700"
-                }}>Ticket Type</p>
+                }}>Type</p>
                 <p style={{ 
                   fontWeight: "800", 
-                  fontSize: "16px", 
+                  fontSize: "12px", 
                   margin: "4px 0 0 0",
-                  color: "#000000"
+                  color: "#000000",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap"
                 }}>
                   {(() => {
                     const entries = cleanedBooking.selectedTickets
@@ -561,18 +528,18 @@ const TicketModal = ({ booking, isOpen, onClose }) => {
                 textAlign: "center", 
                 background: "#ffffff", 
                 borderRadius: "12px", 
-                padding: "16px",
+                padding: "10px 6px",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                 border: "2px solid #e5e7eb"
               }}>
                 <p style={{ 
-                  fontSize: "11px", 
+                  fontSize: "9px", 
                   color: "#374151", 
                   textTransform: "uppercase", 
-                  letterSpacing: "1px", 
+                  letterSpacing: "0.5px", 
                   margin: 0,
                   fontWeight: "700"
-                }}>Quantity</p>
+                }}>Qty</p>
                 <p style={{ 
                   fontWeight: "800", 
                   fontSize: "16px", 
@@ -584,23 +551,26 @@ const TicketModal = ({ booking, isOpen, onClose }) => {
                 textAlign: "center", 
                 background: "#ffffff", 
                 borderRadius: "12px", 
-                padding: "16px",
+                padding: "10px 6px",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                 border: "2px solid #e5e7eb"
               }}>
                 <p style={{ 
-                  fontSize: "11px", 
+                  fontSize: "9px", 
                   color: "#374151", 
                   textTransform: "uppercase", 
-                  letterSpacing: "1px", 
+                  letterSpacing: "0.5px", 
                   margin: 0,
                   fontWeight: "700"
-                }}>Amount</p>
+                }}>Amt</p>
                 <p style={{ 
                   fontWeight: "800", 
-                  fontSize: "14px", 
+                  fontSize: "12px", 
                   margin: "4px 0 0 0",
-                  color: "#059669"
+                  color: "#059669",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap"
                 }}>{formatPrice(ticketData.finalAmount)}</p>
               </div>
             </div>

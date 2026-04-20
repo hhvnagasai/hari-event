@@ -94,7 +94,8 @@ const MerchantQRCodes = () => {
           <p className="text-gray-400 text-sm mt-1">Create an event first to generate QR codes</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-5"
+          style={{ gridTemplateColumns: window.innerWidth <= 768 ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)' }}>
           {events.map((ev) => {
             const hasQR = !!qrMap[ev._id];
             const url = getEventUrl(ev._id);

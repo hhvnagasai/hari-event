@@ -4,7 +4,6 @@
   padding: 0;
   overflow-x: hidden;
   box-sizing: border-box;
-  font-size: 20px;
 }
 ::-webkit-scrollbar {
   display: none;

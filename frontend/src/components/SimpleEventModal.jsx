@@ -72,12 +72,12 @@ const SimpleEventModal = ({ selectedEvent, setSelectedEvent, onBookNow }) => {
             className="font-semibold px-6 py-3 rounded-lg transition-colors"
             onClick={() => onBookNow && onBookNow(selectedEvent)}
             style={{ 
-              backgroundColor: '#7c3aed',
+              backgroundColor: '#0891b2',
               color: 'white',
               border: 'none'
             }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#6d28d9'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#7c3aed'}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#0e7490'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#0891b2'}
           >
             <span style={{ color: 'white' }}>Book Now</span>
           </button>

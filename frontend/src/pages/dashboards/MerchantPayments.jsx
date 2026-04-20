@@ -48,28 +48,22 @@ const MerchantPayments = () => {
       </section>
 
       {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }} className="mb-8">
-        <div className="bg-white rounded-xl p-6 shadow-sm ring-1 ring-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Earnings</p>
-              <p className="text-3xl font-bold text-gray-900">{formatCurrency(stats.total)}</p>
-            </div>
-            <div className="stat-icon-box h-12 w-12 bg-green-600 text-white flex items-center justify-center rounded-lg">
-              <FaRupeeSign className="responsive-icon" />
-            </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }} className="mb-6">
+        <div className="bg-white rounded-xl p-4 shadow-sm ring-1 ring-gray-200 relative overflow-hidden">
+          <div className="stat-icon-box absolute top-3 right-3 h-8 w-8 bg-green-600 text-white flex items-center justify-center rounded-lg">
+            <FaRupeeSign style={{ fontSize: 12 }} />
           </div>
+          <p className="text-xs text-gray-500 mb-1">Total Earnings</p>
+          <p className="font-bold text-gray-900 pr-10" style={{ fontSize: 'clamp(12px, 3vw, 18px)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {formatCurrency(stats.total)}
+          </p>
         </div>
-        <div className="bg-white rounded-xl p-6 shadow-sm ring-1 ring-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Transactions</p>
-              <p className="text-3xl font-bold text-gray-900">{stats.count}</p>
-            </div>
-            <div className="stat-icon-box h-12 w-12 bg-blue-600 text-white flex items-center justify-center rounded-lg">
-              <FaCreditCard className="responsive-icon" />
-            </div>
+        <div className="bg-white rounded-xl p-4 shadow-sm ring-1 ring-gray-200 relative">
+          <div className="stat-icon-box absolute top-3 right-3 h-8 w-8 bg-blue-600 text-white flex items-center justify-center rounded-lg">
+            <FaCreditCard style={{ fontSize: 12 }} />
           </div>
+          <p className="text-xs text-gray-500 mb-1">Total Transactions</p>
+          <p className="text-xl font-bold text-gray-900">{stats.count}</p>
         </div>
       </div>
 
@@ -85,7 +79,8 @@ const MerchantPayments = () => {
         </div>
       ) : (
         <div className="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-xs font-medium text-gray-500 uppercase">
                 <tr>
@@ -123,6 +118,30 @@ const MerchantPayments = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+          {/* Mobile card list */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {payments.map((payment) => (
+              <div key={payment._id} className="p-4 space-y-2">
+                <div className="flex justify-between items-start gap-2">
+                  <p className="font-semibold text-gray-900 text-sm flex-1 min-w-0 truncate">
+                    {payment.eventName || payment.event?.title || payment.description || "N/A"}
+                  </p>
+                  <span className={`flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium ${
+                    payment.status === 'success' ? 'bg-green-100 text-green-700' :
+                    payment.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>
+                    {payment.status === 'success' ? 'Done' : payment.status || 'Done'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>{payment.customerName || "-"}</span>
+                  <span>{formatDate(payment.createdAt)}</span>
+                </div>
+                <p className="text-sm font-bold text-green-700">{formatCurrency(payment.amount)}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}

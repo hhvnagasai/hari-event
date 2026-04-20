@@ -669,6 +669,7 @@ export const getMerchantBookings = async (req, res) => {
         time: booking.eventTime || event?.time || 'TBD',
         location: booking.location || booking.eventLocation || event?.location || 'TBD',
         addons: booking.addons || [],
+        servicePrice: booking.servicePrice || 0,
         totalAmount: booking.totalPrice || booking.finalAmount || booking.servicePrice || 0,
         paymentStatus: booking.paymentStatus || (booking.payment?.paid ? 'paid' : 'pending'),
         bookingStatus: booking.bookingStatus || booking.status || 'pending',

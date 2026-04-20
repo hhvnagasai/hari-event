@@ -10,7 +10,7 @@ const Item = ({ icon: Icon, label, to, badge }) => (
     to={to}
     className={({ isActive }) =>
       `flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all ${
-        isActive ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+        isActive ? "bg-cyan-700 text-white" : "text-gray-700 hover:bg-cyan-50 hover:text-cyan-700"
       }`
     }
     style={{ overflow: "visible" }}
@@ -34,7 +34,7 @@ const MerchantSidebar = ({ onLogout, onClose }) => {
   
   return (
     <div style={{ height: "100%", width: "100%", background: "#fff", display: "flex", flexDirection: "column" }}>
-      <div className="px-4 py-4 text-lg font-semibold border-b border-gray-200 text-blue-600 flex items-center justify-between" style={{ flexShrink: 0 }}>
+      <div className="px-4 py-4 text-lg font-semibold border-b border-gray-200 text-cyan-700 flex items-center justify-between" style={{ flexShrink: 0 }}>
         <span>Merchant Panel</span>
         <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 text-gray-500">
           <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

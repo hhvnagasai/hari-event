@@ -76,12 +76,28 @@ const UpcomingEvents = () => {
           </div>
           <div className="banner">
             {items.map((e) => (
-              <div key={e._id} className="item">
+              <div key={e._id} className="item" style={{ position: 'relative' }}>
                 <img
                   src={e.image || e.images?.[0]?.url || "/party.jpg"}
                   alt={e.title}
                   onError={(ev) => { ev.target.src = "/party.jpg"; }}
                 />
+                {/* Service type badge */}
+                <div style={{
+                  position: 'absolute',
+                  top: 10,
+                  left: 10,
+                  backgroundColor: e.eventType === 'ticketed' ? '#1a6fa8' : '#0891b2',
+                  color: '#fff',
+                  padding: '3px 10px',
+                  borderRadius: 20,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: '0.3px',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                }}>
+                  {e.eventType === 'ticketed' ? '🎫 Ticketed' : '🤝 Full Service'}
+                </div>
                 <div className="content">
                   <h3>{e.title}</h3>
                   <p>{e.eventType === "ticketed" && e.date ? new Date(e.date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : ""}</p>
