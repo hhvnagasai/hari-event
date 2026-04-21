@@ -79,33 +79,32 @@ const MerchantPayments = () => {
         </div>
       ) : (
         <div className="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 overflow-hidden">
-          {/* Desktop table */}
-          <div className="hidden md:block overflow-x-auto">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-xs font-medium text-gray-500 uppercase">
                 <tr>
-                  <th className="text-left px-6 py-3">Event</th>
-                  <th className="text-left px-6 py-3">Customer</th>
-                  <th className="text-left px-6 py-3">Amount</th>
-                  <th className="text-left px-6 py-3">Date</th>
-                  <th className="text-left px-6 py-3">Status</th>
+                  <th className="text-left px-4 py-3">Event</th>
+                  <th className="text-left px-4 py-3">Customer</th>
+                  <th className="text-left px-4 py-3">Amount</th>
+                  <th className="text-left px-4 py-3">Date</th>
+                  <th className="text-left px-4 py-3">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {payments.map((payment) => (
                   <tr key={payment._id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4 whitespace-nowrap font-medium">
+                    <td className="px-4 py-3 font-medium text-sm max-w-[160px] truncate">
                       {payment.eventName || payment.event?.title || payment.description || "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{payment.customerName || "-"}</div>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-gray-900 text-sm">{payment.customerName || "-"}</div>
                       {payment.customerEmail && (
-                        <div className="text-xs text-gray-500">{payment.customerEmail}</div>
+                        <div className="text-xs text-gray-500 truncate max-w-[120px]">{payment.customerEmail}</div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap font-medium">{formatCurrency(payment.amount)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{formatDate(payment.createdAt)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-3 font-medium text-sm whitespace-nowrap">{formatCurrency(payment.amount)}</td>
+                    <td className="px-4 py-3 text-sm whitespace-nowrap">{formatDate(payment.createdAt)}</td>
+                    <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         payment.status === 'success' ? 'bg-green-100 text-green-700' :
                         payment.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
@@ -118,30 +117,6 @@ const MerchantPayments = () => {
                 ))}
               </tbody>
             </table>
-          </div>
-          {/* Mobile card list */}
-          <div className="md:hidden divide-y divide-gray-100">
-            {payments.map((payment) => (
-              <div key={payment._id} className="p-4 space-y-2">
-                <div className="flex justify-between items-start gap-2">
-                  <p className="font-semibold text-gray-900 text-sm flex-1 min-w-0 truncate">
-                    {payment.eventName || payment.event?.title || payment.description || "N/A"}
-                  </p>
-                  <span className={`flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium ${
-                    payment.status === 'success' ? 'bg-green-100 text-green-700' :
-                    payment.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-gray-100 text-gray-600'
-                  }`}>
-                    {payment.status === 'success' ? 'Done' : payment.status || 'Done'}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>{payment.customerName || "-"}</span>
-                  <span>{formatDate(payment.createdAt)}</span>
-                </div>
-                <p className="text-sm font-bold text-green-700">{formatCurrency(payment.amount)}</p>
-              </div>
-            ))}
           </div>
         </div>
       )}

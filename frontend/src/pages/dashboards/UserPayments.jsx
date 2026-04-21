@@ -414,19 +414,20 @@ const UserPayments = () => {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Event Type:</span>
                       <span className={`text-gray-900 font-medium ${
-                        selectedPayment.event?.eventType === 'ticketed' || selectedPayment.payment.eventType === 'ticketed'
-                          ? 'text-purple-700'
-                          : 'text-amber-700'
+                        (selectedPayment.event?.eventType || selectedPayment.payment?.eventType || selectedPayment.booking?.serviceCategory) === 'ticketed'
+                          ? 'text-cyan-700'
+                          : 'text-teal-700'
                       }`}>
                         {(() => {
-                          const eventType = selectedPayment.event?.eventType || selectedPayment.payment.eventType || selectedPayment.payment.bookingId?.serviceCategory;
+                          const eventType = selectedPayment.event?.eventType 
+                            || selectedPayment.payment?.eventType 
+                            || selectedPayment.booking?.serviceCategory
+                            || selectedPayment.booking?.eventType;
                           if (!eventType) return "N/A";
                           
-                          // Format the event type nicely
-                          if (eventType === 'ticketed') return 'Ticketed';
-                          if (eventType === 'full-service' || eventType === 'fullService') return 'Full Service';
+                          if (eventType === 'ticketed') return '🎫 Ticketed';
+                          if (eventType === 'full-service' || eventType === 'fullService' || eventType === 'Full Service') return '🤝 Full Service';
                           
-                          // Fallback for other types
                           return eventType.charAt(0).toUpperCase() + eventType.slice(1);
                         })()}
                       </span>
