@@ -9,10 +9,9 @@ import { BsFilter, BsBookmarkHeart, BsBookmarkHeartFill } from "react-icons/bs";
 import toast from "react-hot-toast";
 import BookingModal from "../../components/BookingModal";
 import EventDetailsModal from "../../components/EventDetailsModal";
-import { getEventStatus } from "../../lib/utils";
 
 const UserBrowseEvents = () => {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
@@ -24,51 +23,40 @@ const UserBrowseEvents = () => {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
 
   const categories = ["all", "Conference", "Music", "Food", "Tech", "Wedding", "Party", "Outdoor"];
 
-  const getUserId = (u) => u?.userId || u?.id || u?._id || null;
-  const savedKey = getUserId(user) ? `savedEvents_${getUserId(user)}` : 'savedEvents';
-
   useEffect(() => {
     fetchEvents();
+    loadSavedEvents();
   }, []);
 
-  useEffect(() => {
-    loadSavedEvents();
-  }, [user]);
-
   const loadSavedEvents = () => {
-    const id = getUserId(user);
-    const key = id ? `savedEvents_${id}` : 'savedEvents';
-    const saved = localStorage.getItem(key);
-    setSavedEvents(saved ? JSON.parse(saved) : []);
+    const saved = localStorage.getItem('savedEvents');
+    if (saved) {
+      setSavedEvents(JSON.parse(saved));
+    }
   };
 
   const toggleSaveEvent = (event) => {
-    const id = getUserId(user);
-    const key = id ? `savedEvents_${id}` : 'savedEvents';
     let updatedSaved = [...savedEvents];
     const isSaved = savedEvents.some(e => e._id === event._id);
+    
     if (isSaved) {
       updatedSaved = updatedSaved.filter(e => e._id !== event._id);
       toast.success("Event removed from saved");
     } else {
       updatedSaved.push(event);
-      toast.success("Event saved!");
+      toast.success("Event saved successfully!");
     }
-    localStorage.setItem(key, JSON.stringify(updatedSaved));
+    
+    localStorage.setItem('savedEvents', JSON.stringify(updatedSaved));
     setSavedEvents(updatedSaved);
   };
 
-  const isEventSaved = (eventId) => savedEvents.some(e => e._id === eventId);
+  const isEventSaved = (eventId) => {
+    return savedEvents.some(e => e._id === eventId);
+  };
 
   useEffect(() => {
     filterEvents();
@@ -254,6 +242,17 @@ const UserBrowseEvents = () => {
             <h2 className="text-2xl md:text-3xl font-semibold">Browse Events</h2>
             <p className="text-gray-600 mt-1">Discover and book amazing events near you</p>
           </div>
+          <button
+            onClick={fetchEvents}
+            disabled={loading}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
+            title="Refresh events data"
+          >
+            <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
         </div>
       </section>
 
@@ -332,12 +331,12 @@ const UserBrowseEvents = () => {
           </button>
         </div>
       ) : (
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6"
-          style={{ gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)' }}>
-          {filteredEvents.map((event) => {
-            const eventStatus = getEventStatus(event);
-            const isCompleted = eventStatus.label === 'Completed';
-            return (
+        <section style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(4, 1fr)', 
+          gap: '24px' 
+        }}>
+          {filteredEvents.map((event) => (
             <article key={event._id} style={{
               backgroundColor: 'white',
               borderRadius: '16px',
@@ -345,8 +344,7 @@ const UserBrowseEvents = () => {
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               transition: 'all 0.3s ease',
               display: 'flex',
-              flexDirection: 'column',
-              opacity: isCompleted ? 0.75 : 1,
+              flexDirection: 'column'
             }} className="event-card">
               <div style={{ 
                 position: 'relative', 
@@ -396,37 +394,17 @@ const UserBrowseEvents = () => {
                 })()}
                 <div style={{
                   position: 'absolute',
-                  top: isMobile ? '6px' : '12px',
-                  left: isMobile ? '6px' : '12px',
+                  top: '12px',
+                  left: '12px',
                   backgroundColor: '#a2783a',
                   color: 'white',
-                  padding: isMobile ? '2px 6px' : '4px 12px',
+                  padding: '4px 12px',
                   borderRadius: '20px',
-                  fontSize: isMobile ? '9px' : '12px',
+                  fontSize: '12px',
                   fontWeight: '500'
                 }}>
                   {event.category || "Event"}
                 </div>
-                {/* Status badge — only for ticketed events with a date */}
-                {event.eventType === 'ticketed' && event.date && (() => {
-                  const s = getEventStatus(event);
-                  const colorMap = {
-                    Completed: { bg: "#4b5563", color: "#fff" },
-                    Live: { bg: "#16a34a", color: "#fff" },
-                    Upcoming: { bg: "#2563eb", color: "#fff" },
-                  };
-                  const c = colorMap[s.label] || { bg: "#4b5563", color: "#fff" };
-                  return (
-                    <div style={{
-                      position: 'absolute', bottom: isMobile ? '6px' : '12px', left: isMobile ? '6px' : '12px',
-                      backgroundColor: c.bg, color: c.color,
-                      padding: isMobile ? '1px 5px' : '3px 10px', borderRadius: '20px',
-                      fontSize: isMobile ? '8px' : '11px', fontWeight: '600'
-                    }}>
-                      {s.label}
-                    </div>
-                  );
-                })()}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -434,13 +412,13 @@ const UserBrowseEvents = () => {
                   }}
                   style={{
                     position: 'absolute',
-                    top: isMobile ? '6px' : '12px',
-                    right: isMobile ? '6px' : '12px',
+                    top: '12px',
+                    right: '12px',
                     backgroundColor: 'rgba(255,255,255,0.9)',
                     border: 'none',
                     borderRadius: '50%',
-                    width: isMobile ? '26px' : '36px',
-                    height: isMobile ? '26px' : '36px',
+                    width: '36px',
+                    height: '36px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -450,145 +428,162 @@ const UserBrowseEvents = () => {
                   title={isEventSaved(event._id) ? "Remove from saved" : "Save event"}
                 >
                   {isEventSaved(event._id) ? (
-                    <BsBookmarkHeartFill style={{ color: '#ec4899', fontSize: isMobile ? '12px' : '18px' }} />
+                    <BsBookmarkHeartFill style={{ color: '#ec4899', fontSize: '18px' }} />
                   ) : (
-                    <BsBookmarkHeart style={{ color: '#6b7280', fontSize: isMobile ? '12px' : '18px' }} />
+                    <BsBookmarkHeart style={{ color: '#6b7280', fontSize: '18px' }} />
                   )}
                 </button>
               </div>
-              <div className="event-card-body" style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <h3 className="event-card-title" style={{ 
+              <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <h3 style={{ 
                   fontSize: '18px', 
                   fontWeight: '600', 
-                  marginBottom: '6px',
-                  color: '#1f2937',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
+                  marginBottom: '8px',
+                  color: '#1f2937'
                 }}>{event.title}</h3>
-                {/* Date row — always rendered for consistent height */}
-                <div className="event-card-meta" style={{ 
+                {/* Only show date for non-full-service events */}
+                {(!event.eventType || (event.eventType !== 'fullService' && event.eventType !== 'full-service')) && (
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '6px',
+                    marginBottom: '8px',
+                    color: '#6b7280',
+                    fontSize: '14px'
+                  }}>
+                    <FiCalendar />
+                    {formatDate(event.date)}
+                  </div>
+                )}
+                <div style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
                   gap: '6px',
-                  marginBottom: '4px',
+                  marginBottom: '16px',
                   color: '#6b7280',
-                  fontSize: '13px',
-                  minHeight: '20px'
+                  fontSize: '14px'
                 }}>
-                  <FiCalendar style={{ flexShrink: 0 }} />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {event.eventType === 'ticketed' && event.date
-                      ? formatDate(event.date)
-                      : 'Date as per booking'}
-                  </span>
-                </div>
-                {/* Location row — always rendered */}
-                <div className="event-card-meta" style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '6px',
-                  marginBottom: '0',
-                  color: '#6b7280',
-                  fontSize: '13px',
-                  minHeight: '20px'
-                }}>
-                  <FiMapPin style={{ flexShrink: 0 }} />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {event.location || "Location TBD"}
-                  </span>
+                  <FiMapPin />
+                  {event.location || "Location TBD"}
                 </div>
                 
-                {/* Show ticket availability for ticketed events — moved to View Details modal */}
-
-                <div className="event-card-actions" style={{ display: 'flex', gap: '6px', marginTop: 'auto', paddingTop: '8px' }}>
+                {/* Show ticket availability for ticketed events */}
+                {event.eventType === 'ticketed' && event.ticketTypes && event.ticketTypes.length > 0 && (
+                  <div style={{ 
+                    marginBottom: '16px',
+                    padding: '12px',
+                    backgroundColor: '#f0fdf4',
+                    borderRadius: '8px',
+                    border: '1px solid #bbf7d0'
+                  }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '6px',
+                      color: '#16a34a',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      marginBottom: '8px'
+                    }}>
+                      <svg style={{ width: '16px', height: '16px' }} fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"/>
+                        <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"/>
+                      </svg>
+                      Available Tickets: {event.availableTickets || 0}
+                    </div>
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '8px',
+                      flexWrap: 'wrap'
+                    }}>
+                      {event.ticketTypes.map((ticket, idx) => (
+                        <span key={idx} style={{
+                          display: 'inline-block',
+                          padding: '4px 10px',
+                          backgroundColor: 'white',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          color: '#374151',
+                          border: '1px solid #86efac'
+                        }}>
+                          {ticket.name}: {ticket.quantityAvailable || 0}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                   <button 
                     onClick={() => handleViewDetails(event)}
                     style={{
                       flex: 1,
-                      padding: '10px 8px',
+                      padding: '14px 18px', // Increased padding
                       backgroundColor: 'white',
                       color: '#a2783a',
                       textAlign: 'center',
-                      borderRadius: '8px',
-                      fontWeight: '600',
-                      fontSize: '13px',
+                      borderRadius: '10px', // Increased border radius
+                      fontWeight: '700', // Increased font weight
+                      fontSize: '15px', // Increased font size
                       transition: 'all 0.3s',
                       border: '2px solid #a2783a',
                       cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)', // Added shadow
+                      textTransform: 'uppercase', // Make text uppercase
+                      letterSpacing: '0.5px' // Add letter spacing
                     }}
                     onMouseEnter={(e) => {
                       e.target.style.backgroundColor = '#a2783a';
                       e.target.style.color = 'white';
+                      e.target.style.transform = 'translateY(-2px)';
+                      e.target.style.boxShadow = '0 4px 12px rgba(162, 120, 58, 0.3)';
                     }}
                     onMouseLeave={(e) => {
                       e.target.style.backgroundColor = 'white';
                       e.target.style.color = '#a2783a';
+                      e.target.style.transform = 'translateY(0)';
+                      e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
                     }}
                   >
                     View Details
                   </button>
-                  {(() => {
-                    const s = getEventStatus(event);
-                    const isCompleted = s.label === 'Completed';
-                    return isCompleted ? (
-                      <div style={{
-                        flex: 1,
-                        padding: '10px 8px',
-                        backgroundColor: '#f3f4f6',
-                        color: '#9ca3af',
-                        textAlign: 'center',
-                        borderRadius: '8px',
-                        fontWeight: '600',
-                        fontSize: '12px',
-                        border: '2px solid #e5e7eb',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        N/A
-                      </div>
-                    ) : (
-                      <button 
-                        onClick={() => handleBookNow(event)}
-                        style={{
-                          flex: 1,
-                          padding: '10px 8px',
-                          backgroundColor: '#a2783a',
-                          color: 'white',
-                          textAlign: 'center',
-                          borderRadius: '8px',
-                          fontWeight: '600',
-                          fontSize: '13px',
-                          transition: 'all 0.3s',
-                          border: '2px solid #a2783a',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.target.style.backgroundColor = '#8b6a30';
-                          e.target.style.borderColor = '#8b6a30';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.backgroundColor = '#a2783a';
-                          e.target.style.borderColor = '#a2783a';
-                        }}
-                      >
-                        Book Now
-                      </button>
-                    );
-                  })()}
+                  <button 
+                    onClick={() => handleBookNow(event)}
+                    style={{
+                      flex: 1,
+                      padding: '14px 18px', // Increased padding
+                      backgroundColor: '#a2783a',
+                      color: 'white',
+                      textAlign: 'center',
+                      borderRadius: '10px', // Increased border radius
+                      fontWeight: '700', // Increased font weight
+                      fontSize: '15px', // Increased font size
+                      transition: 'all 0.3s',
+                      border: '2px solid #a2783a',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)', // Added shadow
+                      textTransform: 'uppercase', // Make text uppercase
+                      letterSpacing: '0.5px' // Add letter spacing
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#8b6a30';
+                      e.target.style.borderColor = '#8b6a30';
+                      e.target.style.transform = 'translateY(-2px)';
+                      e.target.style.boxShadow = '0 4px 12px rgba(162, 120, 58, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = '#a2783a';
+                      e.target.style.borderColor = '#a2783a';
+                      e.target.style.transform = 'translateY(0)';
+                      e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                    }}
+                  >
+                    Book Now
+                  </button>
                 </div>
               </div>
             </article>
-            );
-          })}
+          ))}
         </section>
       )}
 

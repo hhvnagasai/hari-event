@@ -11,7 +11,6 @@ import { FaTicketAlt, FaBell, FaCalendarCheck, FaMapMarkerAlt, FaEye, FaCheck } 
 import { FiCalendar, FiMapPin } from "react-icons/fi";
 import { API_BASE, authHeaders } from "../../lib/http";
 import toast from "react-hot-toast";
-import { getEventStatus } from "../../lib/utils";
 
 const UserDashboard = () => {
   const { user, token } = useAuth();
@@ -23,23 +22,14 @@ const UserDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [recentBookings, setRecentBookings] = useState([]);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
   const [isSearching, setIsSearching] = useState(false);
   const [recommendedEvents, setRecommendedEvents] = useState([]);
   const [detailsEvent, setDetailsEvent] = useState(null);
   const [bookingEvent, setBookingEvent] = useState(null);
 
-  // Load saved events from localStorage (user-scoped)
+  // Load saved events from localStorage
   const loadSavedEvents = useCallback(() => {
-    const id = user?.userId || user?.id || user?._id;
-    const key = id ? `savedEvents_${id}` : 'savedEvents';
-    const saved = localStorage.getItem(key);
+    const saved = localStorage.getItem('savedEvents');
     if (saved) {
       setSavedEvents(JSON.parse(saved));
     }
@@ -83,24 +73,23 @@ const UserDashboard = () => {
         setNotifications([]);
       }
 
-        // Fetch recommended events (latest 4 — ticketed upcoming first, then full-service)
-        try {
-          const evRes = await axios.get(`${API_BASE}/events`, { headers });
-          const allEvents = evRes.data.events || [];
-          const now = new Date();
-
-          // Ticketed events with future dates
-          const upcomingTicketed = allEvents
-            .filter(e => e.eventType === "ticketed" && e.date && new Date(e.date) >= now)
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-          // Full-service events (no fixed date — always available)
-          const fullService = allEvents.filter(e => e.eventType !== "ticketed");
-
-          // Merge: ticketed first, then full-service, limit 4
-          const merged = [...upcomingTicketed, ...fullService];
-          setRecommendedEvents(merged.slice(0, 4));
-        } catch {}
+      // Fetch recommended events (latest 4 upcoming events)
+      try {
+        const evRes = await axios.get(`${API_BASE}/events`, { headers });
+        const allEvents = evRes.data.events || [];
+        const now = new Date();
+        const upcoming = allEvents
+          .filter(e => e.date && new Date(e.date) >= now)
+          .sort((a, b) => new Date(a.date) - new Date(b.date))
+          .slice(0, 4);
+        // If fewer than 4 upcoming, fill with latest events
+        if (upcoming.length < 4) {
+          const rest = allEvents.filter(e => !upcoming.find(u => u._id === e._id)).slice(0, 4 - upcoming.length);
+          setRecommendedEvents([...upcoming, ...rest]);
+        } else {
+          setRecommendedEvents(upcoming);
+        }
+      } catch {}
     } catch (error) {
       console.error("Failed to load dashboard data", error);
     }
@@ -273,18 +262,13 @@ const UserDashboard = () => {
               Browse All
             </button>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4"
-            style={{ gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
             {recommendedEvents.map(ev => {
               const img = ev.images?.[0]?.url || ev.image || "/party.jpg";
               const price = ev.price > 0
                 ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(ev.price)
                 : "Free";
-              const fmtDate = ev.date
-                ? new Date(ev.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-                : ev.eventType === "full-service" || !ev.eventType
-                  ? null  // full-service: no fixed date
-                  : null;
+              const fmtDate = ev.date ? new Date(ev.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : null;
               return (
                 <div key={ev._id} style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', display: 'flex', flexDirection: 'column', transition: 'box-shadow 0.2s' }}
                   onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)'}
@@ -304,50 +288,38 @@ const UserDashboard = () => {
                   </div>
 
                   {/* Content */}
-                  <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <p style={{ fontWeight: 700, fontSize: 13, color: '#111827', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title}</p>
-                    {/* Date row — fixed height always */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, minHeight: 18 }}>
-                      <FiCalendar size={11} style={{ flexShrink: 0, color: ev.eventType !== 'ticketed' ? '#a2783a' : '#6b7280' }} />
-                      <span style={{ color: ev.eventType !== 'ticketed' ? '#a2783a' : '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {ev.eventType === "ticketed" && ev.date
-                          ? new Date(ev.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-                          : "Date as per booking"}
-                      </span>
-                    </div>
+                  <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <p style={{ fontWeight: 700, fontSize: 14, color: '#111827', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title}</p>
+                    {fmtDate && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#6b7280', fontSize: 12 }}>
+                        <FiCalendar size={12} style={{ flexShrink: 0 }} />
+                        <span>{fmtDate}</span>
+                      </div>
+                    )}
                     {ev.location && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#6b7280', fontSize: 11, minHeight: 18 }}>
-                        <FiMapPin size={11} style={{ flexShrink: 0 }} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#6b7280', fontSize: 12 }}>
+                        <FiMapPin size={12} style={{ flexShrink: 0 }} />
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.location}</span>
                       </div>
                     )}
-                    {/* Buttons — always at bottom */}
-                    <div style={{ display: 'flex', gap: 5, marginTop: 'auto', paddingTop: 6 }}>
+                    {/* Buttons */}
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                       <button
                         onClick={() => setDetailsEvent(ev)}
-                        style={{ flex: 1, padding: '6px 0', background: '#fff', color: '#2563eb', border: '1.5px solid #2563eb', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        style={{ flex: 1, padding: '7px 0', background: '#fff', color: '#2563eb', border: '1.5px solid #2563eb', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                         onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; }}
                         onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
                       >
                         View Details
                       </button>
-                      {(() => {
-                        const expired = getEventStatus(ev).label === 'Completed';
-                        return expired ? (
-                          <div style={{ flex: 1, padding: '6px 0', background: '#f3f4f6', color: '#9ca3af', border: '1.5px solid #e5e7eb', borderRadius: 6, fontSize: 10, fontWeight: 600, textAlign: 'center', cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            Ended
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => { setDetailsEvent(null); setBookingEvent(ev); }}
-                            style={{ flex: 1, padding: '6px 0', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
-                          >
-                            Book Now
-                          </button>
-                        );
-                      })()}
+                      <button
+                        onClick={() => { setDetailsEvent(null); setBookingEvent(ev); }}
+                        style={{ flex: 1, padding: '7px 0', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#1d4ed8'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#2563eb'; }}
+                      >
+                        Book Now
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -498,11 +470,11 @@ const UserDashboard = () => {
       </section>
 
       {/* Summary Cards - Side by Side (4 per row) */}
-      <div className="user-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px', marginBottom: '32px' }}>
-        <SummaryCard title="Total Bookings" value={stats.bookings} icon={FaTicketAlt} color="bg-blue-600" to="/dashboard/user/bookings" />
-        <SummaryCard title="Upcoming Events" value={stats.upcoming} icon={BsCalendar2Event} color="bg-emerald-600" to="/dashboard/user/bookings" />
-        <SummaryCard title="Saved Events" value={stats.saved} icon={BsBookmarkHeart} color="bg-pink-600" to="/dashboard/user/saved" />
-        <SummaryCard title="Notifications" value={stats.notifications} icon={FaBell} color="bg-amber-600" to="/dashboard/user/notifications" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }} className="mb-8">
+        <SummaryCard title="Total Bookings" value={stats.bookings} icon={FaTicketAlt} color="bg-blue-600" />
+        <SummaryCard title="Upcoming Events" value={stats.upcoming} icon={BsCalendar2Event} color="bg-emerald-600" />
+        <SummaryCard title="Saved Events" value={stats.saved} icon={BsBookmarkHeart} color="bg-pink-600" />
+        <SummaryCard title="Notifications" value={stats.notifications} icon={FaBell} color="bg-amber-600" />
       </div>
 
       {/* Notifications Section */}
@@ -562,15 +534,6 @@ const UserDashboard = () => {
           </div>
         </section>
       )}
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        @media (max-width: 767px) {
-          .user-stats-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 12px !important;
-          }
-        }
-      ` }} />
     </UserLayout>
   );
 };

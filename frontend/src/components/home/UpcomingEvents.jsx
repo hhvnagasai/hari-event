@@ -19,18 +19,10 @@ const UpcomingEvents = () => {
       .then((res) => {
         const events = res.data.events || [];
         const now = new Date();
-
-        // Ticketed events: must have a future date
-        const ticketed = events
-          .filter((e) => e.eventType === "ticketed" && e.date && new Date(e.date) >= now)
-          .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        // Full-service events: no fixed date, always "available"
-        const fullService = events
-          .filter((e) => e.eventType !== "ticketed" && e.status !== "inactive");
-
-        // Merge: ticketed first, then full-service, take up to 4
-        const upcoming = [...ticketed, ...fullService].slice(0, 4);
+        const upcoming = events
+          .filter((e) => e.date && new Date(e.date) >= now)
+          .sort((a, b) => new Date(a.date) - new Date(b.date))
+          .slice(0, 3);
         setItems(upcoming);
       })
       .catch(() => {});
@@ -65,42 +57,18 @@ const UpcomingEvents = () => {
     <>
       <section className="upcoming-events">
         <div className="container">
-          <div className="section-header">
-            <h2>UPCOMING EVENTS</h2>
-            <a
-              href="/services"
-              style={{ fontSize: 14, color: "#1f2937", fontWeight: 600, textDecoration: "none", cursor: "pointer", alignSelf: "flex-end", paddingBottom: 4 }}
-            >
-              View All
-            </a>
-          </div>
+          <h2>UPCOMING EVENTS</h2>
           <div className="banner">
             {items.map((e) => (
-              <div key={e._id} className="item" style={{ position: 'relative' }}>
+              <div key={e._id} className="item">
                 <img
                   src={e.image || e.images?.[0]?.url || "/party.jpg"}
                   alt={e.title}
                   onError={(ev) => { ev.target.src = "/party.jpg"; }}
                 />
-                {/* Service type badge */}
-                <div style={{
-                  position: 'absolute',
-                  top: 10,
-                  left: 10,
-                  backgroundColor: e.eventType === 'ticketed' ? '#1a6fa8' : '#0891b2',
-                  color: '#fff',
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: '0.3px',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                }}>
-                  {e.eventType === 'ticketed' ? '🎫 Ticketed' : '🤝 Full Service'}
-                </div>
                 <div className="content">
                   <h3>{e.title}</h3>
-                  <p>{e.eventType === "ticketed" && e.date ? new Date(e.date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : ""}</p>
+                  <p>{e.date ? new Date(e.date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : ""}</p>
                   <p>{e.location || ""}</p>
                   <button
                     onClick={() => handleViewDetails(e)}

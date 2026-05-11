@@ -3,7 +3,7 @@ import axios from "axios";
 import useAuth from "../../context/useAuth";
 import { API_BASE, authHeaders } from "../../lib/http";
 import MerchantLayout from "../../components/merchant/MerchantLayout";
-import { FaListAlt, FaCheck, FaTimes, FaTicketAlt, FaClock, FaCreditCard, FaSearch, FaFilter, FaEye, FaUser, FaCalendarAlt, FaMapMarkerAlt, FaRupeeSign } from "react-icons/fa";
+import { FaListAlt, FaCheck, FaTimes, FaTicketAlt, FaClock, FaCreditCard, FaSearch, FaFilter, FaEye } from "react-icons/fa";
 import toast from "react-hot-toast";
 import useNotificationBadges from "../../context/useNotificationBadges";
 
@@ -13,14 +13,14 @@ const MerchantBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
-  const [selectedBooking, setSelectedBooking] = useState(null);
   
   // Filters and search
   const [eventTypeFilter, setEventTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   
-
+  // View details modal
+  const [viewingBooking, setViewingBooking] = useState(null);
 
   const loadBookings = useCallback(async () => {
     try {
@@ -47,11 +47,14 @@ const MerchantBookings = () => {
   }, [loadBookings]);
 
   const handleApprove = async (bookingId) => {
+    const message = prompt("Enter a message for the customer (optional):", "Your booking has been approved. Please proceed with the payment.");
+    if (message === null) return;
+
     setProcessingId(bookingId);
     try {
       await axios.put(
         `${API_BASE}/merchant/bookings/${bookingId}/approve`,
-        { message: "Your booking has been approved. Please proceed with the payment." },
+        { message },
         { headers: authHeaders(token) }
       );
       toast.success("Booking approved! Customer notified to pay.");
@@ -85,7 +88,7 @@ const MerchantBookings = () => {
     try {
       await axios.put(
         `${API_BASE}/merchant/bookings/${bookingId}/status`,
-        { status: newStatus, bookingStatus: newStatus },
+        { status: newStatus },
         { headers: authHeaders(token) }
       );
       toast.success(`Status updated to ${newStatus}`);
@@ -117,16 +120,16 @@ const MerchantBookings = () => {
   };
 
   const handleMarkComplete = async (bookingId) => {
-    if (!window.confirm("Mark this booking as complete? The customer will be prompted to pay the remaining amount and rate the event.")) return;
+    if (!window.confirm("Mark this booking as complete? This will allow the customer to pay remaining amount and rate the event.")) return;
     
     setProcessingId(bookingId);
     try {
       await axios.put(
-        `${API_BASE}/merchant/bookings/${bookingId}/status`,
-        { status: "completed", bookingStatus: "completed" },
+        `${API_BASE}/merchant/bookings/${bookingId}/complete`,
+        {},
         { headers: authHeaders(token) }
       );
-      toast.success("Booking marked as complete! Customer can now pay remaining and rate.");
+      toast.success("Booking marked as complete! Invoice generated.");
       loadBookings();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to mark as complete");
@@ -269,17 +272,12 @@ const MerchantBookings = () => {
   return (
     <MerchantLayout>
       <section className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-semibold">All Bookings</h2>
-            <p className="text-gray-600 mt-1">Manage all customer bookings for ticketed and full-service events</p>
-          </div>
-
-        </div>
+        <h2 className="text-2xl md:text-3xl font-semibold">All Bookings</h2>
+        <p className="text-gray-600 mt-1">Manage all customer bookings for ticketed and full-service events</p>
       </section>
 
       {/* Stats */}
-      <section className="merchant-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <p className="text-gray-500 text-sm">Total Bookings</p>
           <p className="text-2xl font-bold text-gray-900">{bookings.length}</p>
@@ -417,14 +415,14 @@ const MerchantBookings = () => {
                       {booking.location || 'N/A'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                      {booking.quantity || booking.guestCount || 1}
+                      {booking.quantity || 'N/A'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                       {booking.addons && booking.addons.length > 0 ? (
                         <div className="space-y-1">
                           {booking.addons.map((addon, idx) => (
                             <div key={idx} className="text-xs">
-                              {addon.name}{addon.quantity && addon.quantity > 1 ? ` ×${addon.quantity}` : ''}: {formatCurrency(addon.total || addon.price * (addon.quantity || 1))}
+                              {addon.name}: {formatCurrency(addon.price)}
                             </div>
                           ))}
                         </div>
@@ -446,141 +444,130 @@ const MerchantBookings = () => {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm">
                       <div className="flex gap-2 flex-wrap items-center">
-                        {/* View Details button — always visible */}
-                        <button
-                          onClick={() => setSelectedBooking(booking)}
-                          className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200 transition flex items-center gap-1"
-                        >
-                          <FaEye size={11} /> Details
-                        </button>
+                        {/* Pending Status - Request Advance or Reject */}
+                        {booking.bookingStatus === 'pending' && booking.eventType === 'full-service' && (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleRequestAdvance(booking._id)}
+                              disabled={processingId === booking._id}
+                              className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-1"
+                              title="Request Advance Payment"
+                            >
+                              <FaCreditCard size={12} />
+                              Pay Advance
+                            </button>
+                            <button
+                              onClick={() => handleReject(booking._id)}
+                              disabled={processingId === booking._id}
+                              className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition disabled:opacity-50"
+                              title="Reject Booking"
+                            >
+                              <FaTimes size={12} />
+                            </button>
+                          </div>
+                        )}
 
-                        {/* ── TICKETED EVENTS: simple paid/ticket status only ── */}
-                        {booking.eventType === 'ticketed' && (
-                          <>
-                            {booking.paymentStatus === 'paid' ? (
-                              <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded flex items-center gap-1">
-                                <FaCheck size={12} /> Paid
+                        {/* Advance Requested - Waiting for Customer Payment */}
+                        {booking.bookingStatus === 'advance_requested' && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded flex items-center gap-1">
+                            <FaClock size={12} />
+                            Awaiting Advance
+                          </span>
+                        )}
+
+                        {/* Advance Paid - Approve/Reject */}
+                        {booking.bookingStatus === 'advance_paid' && (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleApprove(booking._id)}
+                              disabled={processingId === booking._id}
+                              className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition disabled:opacity-50 flex items-center gap-1"
+                              title="Approve Booking"
+                            >
+                              <FaCheck size={12} />
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleReject(booking._id)}
+                              disabled={processingId === booking._id}
+                              className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition disabled:opacity-50"
+                              title="Reject Booking"
+                            >
+                              <FaTimes size={12} />
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Accepted/Confirmed - Status Dropdown */}
+                        {(booking.bookingStatus === 'accepted' || booking.bookingStatus === 'confirmed') && (
+                          <select
+                            value={booking.status || 'pending'}
+                            onChange={(e) => handleUpdateStatus(booking._id, e.target.value)}
+                            disabled={processingId === booking._id}
+                            className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="processing">Processing</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                        )}
+
+                        {/* Processing - Mark Complete Button */}
+                        {booking.bookingStatus === 'processing' && (
+                          <button
+                            onClick={() => handleMarkComplete(booking._id)}
+                            disabled={processingId === booking._id}
+                            className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition disabled:opacity-50 flex items-center gap-1"
+                            title="Mark as Complete & Generate Invoice"
+                          >
+                            <FaCheck size={12} />
+                            Mark Complete
+                          </button>
+                        )}
+
+                        {/* Completed - View Only with Rating */}
+                        {booking.bookingStatus === 'completed' && (
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded flex items-center gap-1">
+                              <FaCheck size={12} />
+                              Completed
+                            </span>
+                            {booking.rating ? (
+                              <span className="text-xs text-yellow-600 font-medium">
+                                ⭐ {booking.rating.score}/5
                               </span>
                             ) : (
-                              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded flex items-center gap-1">
-                                <FaClock size={12} /> Awaiting Payment
+                              <span className="text-xs text-gray-500 italic">
+                                Awaiting rating
                               </span>
                             )}
-                          </>
+                          </div>
                         )}
 
-                        {/* ── FULL-SERVICE EVENTS: full workflow ── */}
-                        {booking.eventType === 'full-service' && (
-                          <>
-                            {/* Pending - Request Advance or Reject */}
-                            {booking.bookingStatus === 'pending' && (
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => handleRequestAdvance(booking._id)}
-                                  disabled={processingId === booking._id}
-                                  className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-1"
-                                >
-                                  <FaCreditCard size={12} />
-                                  Req. Advance
-                                </button>
-                                <button
-                                  onClick={() => handleReject(booking._id)}
-                                  disabled={processingId === booking._id}
-                                  className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition disabled:opacity-50"
-                                >
-                                  <FaTimes size={12} />
-                                </button>
-                              </div>
-                            )}
-
-                            {/* Awaiting Advance */}
-                            {(booking.bookingStatus === 'awaiting_advance' || booking.bookingStatus === 'advance_requested') && (
-                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded flex items-center gap-1">
-                                <FaClock size={12} />
-                                Awaiting Advance
-                              </span>
-                            )}
-
-                            {/* Advance Paid - Approve/Reject */}
-                            {booking.bookingStatus === 'advance_paid' && (
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => handleApprove(booking._id)}
-                                  disabled={processingId === booking._id}
-                                  className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition disabled:opacity-50 flex items-center gap-1"
-                                >
-                                  <FaCheck size={12} />
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => handleReject(booking._id)}
-                                  disabled={processingId === booking._id}
-                                  className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition disabled:opacity-50"
-                                >
-                                  <FaTimes size={12} />
-                                </button>
-                              </div>
-                            )}
-
-                            {/* Accepted/Confirmed/Approved - Status Dropdown */}
-                            {(booking.bookingStatus === 'accepted' || booking.bookingStatus === 'confirmed' || booking.bookingStatus === 'approved') && (
-                              <select
-                                value={booking.bookingStatus}
-                                onChange={(e) => handleUpdateStatus(booking._id, e.target.value)}
-                                disabled={processingId === booking._id}
-                                className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              >
-                                <option value="pending">Pending</option>
-                                <option value="processing">Processing</option>
-                                <option value="completed">Completed</option>
-                              </select>
-                            )}
-
-                            {/* Processing - Mark Complete */}
-                            {booking.bookingStatus === 'processing' && (
-                              <button
-                                onClick={() => handleMarkComplete(booking._id)}
-                                disabled={processingId === booking._id}
-                                className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition disabled:opacity-50 flex items-center gap-1"
-                              >
-                                <FaCheck size={12} />
-                                Mark Complete
-                              </button>
-                            )}
-
-                            {/* Completed */}
-                            {booking.bookingStatus === 'completed' && (
-                              <div className="flex items-center gap-2">
-                                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded flex items-center gap-1">
-                                  <FaCheck size={12} />
-                                  Completed
-                                </span>
-                                {booking.rating?.score ? (
-                                  <span className="text-xs text-yellow-600 font-medium">⭐ {booking.rating.score}/5</span>
-                                ) : (
-                                  <span className="text-xs text-gray-400 italic">Awaiting rating</span>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Rejected */}
-                            {booking.bookingStatus === 'rejected' && (
-                              <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded flex items-center gap-1">
-                                <FaTimes size={12} />
-                                Rejected
-                              </span>
-                            )}
-
-                            {/* Cancelled */}
-                            {booking.bookingStatus === 'cancelled' && (
-                              <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded flex items-center gap-1">
-                                <FaTimes size={12} />
-                                Cancelled
-                              </span>
-                            )}
-                          </>
+                        {/* Rejected - View Only */}
+                        {booking.bookingStatus === 'rejected' && (
+                          <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded flex items-center gap-1">
+                            <FaTimes size={12} />
+                            Rejected
+                          </span>
                         )}
 
+                        {/* Cancelled - View Only */}
+                        {booking.bookingStatus === 'cancelled' && (
+                          <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded flex items-center gap-1">
+                            <FaTimes size={12} />
+                            Cancelled
+                          </span>
+                        )}
+
+                        {/* View Details Button - Always Available */}
+                        <button
+                          onClick={() => setViewingBooking(booking)}
+                          className="px-2 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 transition flex items-center gap-1"
+                          title="View Details"
+                        >
+                          <FaEye size={12} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -591,167 +578,80 @@ const MerchantBookings = () => {
         </div>
       )}
 
-      {/* Booking Details Modal */}
-      {selectedBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setSelectedBooking(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Booking Details</h3>
-              <button onClick={() => setSelectedBooking(null)} className="text-gray-400 hover:text-gray-700 text-xl font-bold">✕</button>
+      {/* View Details Modal */}
+      {viewingBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b">
+              <h3 className="text-xl font-bold">Booking Details</h3>
+              <p className="text-sm text-gray-500">{viewingBooking._id}</p>
             </div>
-
-            {/* Body */}
-            <div className="p-5 space-y-4">
-              {/* Booking ID & Status */}
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono text-gray-500">#{selectedBooking._id.slice(-10).toUpperCase()}</span>
-                <div className="flex gap-2">
-                  {getStatusBadge(selectedBooking.bookingStatus)}
-                  {getPaymentStatusBadge(selectedBooking.paymentStatus)}
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">User</p>
+                  <p className="font-medium">{viewingBooking.user?.name}</p>
+                  <p className="text-sm text-gray-600">{viewingBooking.user?.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Event</p>
+                  <p className="font-medium">{viewingBooking.serviceTitle}</p>
                 </div>
               </div>
-
-              {/* Customer */}
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Customer</p>
-                <div className="flex items-center gap-2">
-                  <FaUser className="text-gray-400" />
-                  <span className="font-medium text-gray-900">{selectedBooking.userName}</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Event Type</p>
+                  <p className="font-medium capitalize">{viewingBooking.eventType}</p>
                 </div>
-                {selectedBooking.userEmail && (
-                  <p className="text-sm text-gray-600 ml-5">{selectedBooking.userEmail}</p>
-                )}
+                <div>
+                  <p className="text-sm text-gray-500">Status</p>
+                  <div>{getStatusBadge(viewingBooking.status)}</div>
+                </div>
               </div>
-
-              {/* Event */}
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Event</p>
-                <div className="flex items-center gap-2">
-                  <FaCalendarAlt className="text-blue-500" />
-                  <span className="font-medium text-gray-900">{selectedBooking.eventName || selectedBooking.serviceTitle}</span>
-                </div>
-                <div className="flex items-center gap-2 ml-5 text-sm text-gray-600">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${selectedBooking.eventType === 'ticketed' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {selectedBooking.eventType === 'ticketed' ? 'Ticketed' : 'Full Service'}
-                  </span>
-                </div>
-                {selectedBooking.eventDate && (
-                  <p className="text-sm text-gray-600 ml-5">📅 {formatDate(selectedBooking.eventDate)} {selectedBooking.eventTime && `at ${formatTime(selectedBooking.eventTime)}`}</p>
-                )}
-                {selectedBooking.location && (
-                  <div className="flex items-center gap-2 ml-5 text-sm text-gray-600">
-                    <FaMapMarkerAlt className="text-red-400" />
-                    {selectedBooking.location}
+              {viewingBooking.ticket && (
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold mb-2">Ticket Information</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Ticket Number</p>
+                      <p className="font-medium">{viewingBooking.ticket.ticketNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Ticket Type</p>
+                      <p className="font-medium">{viewingBooking.ticket.ticketType}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Quantity</p>
+                      <p className="font-medium">{viewingBooking.ticket.quantity}</p>
+                    </div>
                   </div>
-                )}
-              </div>
-
-              {/* Ticket breakdown for ticketed events */}
-              {selectedBooking.eventType === 'ticketed' && selectedBooking.selectedTickets && Object.keys(selectedBooking.selectedTickets).length > 0 && (
-                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tickets</p>
-                  {Object.entries(selectedBooking.selectedTickets).filter(([,v]) => Number(v) > 0).map(([type, qty]) => (
-                    <div key={type} className="flex justify-between text-sm">
-                      <span className="text-gray-700">🎟 {type}</span>
-                      <span className="font-medium">× {qty}</span>
-                    </div>
-                  ))}
                 </div>
               )}
-
-              {/* Add-ons */}
-              {selectedBooking.addons?.length > 0 && (
-                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Add-ons</p>
-                  {selectedBooking.addons.map((a, i) => (
-                    <div key={i} className="flex justify-between text-sm">
-                      <span className="text-gray-700">
-                        {a.name}
-                        {a.quantity && a.quantity > 1 ? ` × ${a.quantity}` : ''}
-                      </span>
-                      <span className="font-medium text-gray-900">₹{Number(a.total || (a.price * (a.quantity || 1)) || 0).toLocaleString('en-IN')}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Pricing */}
-              <div className="bg-blue-50 rounded-xl p-4 space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Pricing</p>
-                {/* Base event price */}
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Event Price</span>
-                  <span>₹{(() => {
-                    const sp = Number(selectedBooking.servicePrice || selectedBooking.basePrice || selectedBooking.eventPrice || 0);
-                    if (sp > 0) return sp.toLocaleString('en-IN');
-                    // Fallback: total minus addons
-                    const addonsTotal = (selectedBooking.addons || []).reduce((sum, a) => sum + Number(a.total || (a.price * (a.quantity || 1)) || 0), 0);
-                    const total = Number(selectedBooking.totalAmount || selectedBooking.totalPrice || 0);
-                    const discount = Number(selectedBooking.discount || selectedBooking.discountAmount || 0);
-                    return Math.max(0, total + discount - addonsTotal).toLocaleString('en-IN');
-                  })()}</span>
-                </div>
-                {/* Add-ons subtotal */}
-                {selectedBooking.addons?.length > 0 && (() => {
-                  const addonsTotal = selectedBooking.addons.reduce((sum, a) => sum + Number(a.total || (a.price * (a.quantity || 1)) || 0), 0);
-                  return addonsTotal > 0 ? (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Add-ons</span>
-                      <span>₹{addonsTotal.toLocaleString('en-IN')}</span>
-                    </div>
-                  ) : null;
-                })()}
-                {/* Discount */}
-                {(selectedBooking.discount > 0 || selectedBooking.discountAmount > 0) && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Discount {selectedBooking.promoCode ? `(${selectedBooking.promoCode})` : ''}</span>
-                    <span>-₹{Number(selectedBooking.discount || selectedBooking.discountAmount || 0).toLocaleString('en-IN')}</span>
+              {viewingBooking.addons && viewingBooking.addons.length > 0 && (
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold mb-2">Add-Ons</h4>
+                  <div className="space-y-2">
+                    {viewingBooking.addons.map((addon, idx) => (
+                      <div key={idx} className="flex justify-between">
+                        <span>{addon.name}</span>
+                        <span className="font-medium">{formatCurrency(addon.price)}</span>
+                      </div>
+                    ))}
                   </div>
-                )}
-                <div className="flex justify-between text-sm font-bold border-t pt-2">
-                  <span className="text-gray-800">Total</span>
-                  <span className="text-blue-700">₹{Number(selectedBooking.totalAmount || selectedBooking.totalPrice || 0).toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-
-              {/* Notes */}
-              {selectedBooking.notes && (
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Notes</p>
-                  <p className="text-sm text-gray-700">{selectedBooking.notes}</p>
                 </div>
               )}
-
-              {/* Merchant response */}
-              {selectedBooking.merchantResponse?.message && (
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Your Response</p>
-                  <p className="text-sm text-gray-700">{selectedBooking.merchantResponse.message}</p>
-                </div>
-              )}
-
-              <p className="text-xs text-gray-400 text-right">Booked on {new Date(selectedBooking.createdAt).toLocaleString()}</p>
             </div>
-
-            <div className="p-5 border-t">
-              <button onClick={() => setSelectedBooking(null)} className="w-full py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium">
+            <div className="p-6 border-t flex justify-end">
+              <button
+                onClick={() => setViewingBooking(null)}
+                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              >
                 Close
               </button>
             </div>
           </div>
         </div>
       )}
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        @media (max-width: 767px) {
-          .merchant-stats-grid {
-            display: grid !important;
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 12px !important;
-          }
-        }
-      ` }} />
     </MerchantLayout>
   );
 };
