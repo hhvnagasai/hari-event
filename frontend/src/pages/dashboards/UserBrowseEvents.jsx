@@ -331,7 +331,7 @@ const UserBrowseEvents = () => {
           </button>
         </div>
       ) : (
-        <section style={{ 
+        <section className="events-browse-grid" style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(4, 1fr)', 
           gap: '24px' 
@@ -513,74 +513,59 @@ const UserBrowseEvents = () => {
                     </div>
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                {(() => {
+                  const mob = window.innerWidth <= 768;
+                  return (
+                <div style={{ display: 'flex', gap: mob ? '4px' : '8px', marginTop: 'auto', paddingTop: '8px' }}>
                   <button 
                     onClick={() => handleViewDetails(event)}
                     style={{
                       flex: 1,
-                      padding: '14px 18px', // Increased padding
+                      padding: mob ? '6px 2px' : '10px 8px',
                       backgroundColor: 'white',
                       color: '#a2783a',
                       textAlign: 'center',
-                      borderRadius: '10px', // Increased border radius
-                      fontWeight: '700', // Increased font weight
-                      fontSize: '15px', // Increased font size
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      fontSize: mob ? '10px' : '13px',
                       transition: 'all 0.3s',
                       border: '2px solid #a2783a',
                       cursor: 'pointer',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)', // Added shadow
-                      textTransform: 'uppercase', // Make text uppercase
-                      letterSpacing: '0.5px' // Add letter spacing
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                     }}
-                    onMouseEnter={(e) => {
-                      e.target.style.backgroundColor = '#a2783a';
-                      e.target.style.color = 'white';
-                      e.target.style.transform = 'translateY(-2px)';
-                      e.target.style.boxShadow = '0 4px 12px rgba(162, 120, 58, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.backgroundColor = 'white';
-                      e.target.style.color = '#a2783a';
-                      e.target.style.transform = 'translateY(0)';
-                      e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                    }}
+                    onMouseEnter={(e) => { e.target.style.backgroundColor = '#a2783a'; e.target.style.color = 'white'; }}
+                    onMouseLeave={(e) => { e.target.style.backgroundColor = 'white'; e.target.style.color = '#a2783a'; }}
                   >
-                    View Details
+                    {mob ? 'Details' : 'View Details'}
                   </button>
                   <button 
                     onClick={() => handleBookNow(event)}
                     style={{
                       flex: 1,
-                      padding: '14px 18px', // Increased padding
+                      padding: mob ? '6px 2px' : '10px 8px',
                       backgroundColor: '#a2783a',
                       color: 'white',
                       textAlign: 'center',
-                      borderRadius: '10px', // Increased border radius
-                      fontWeight: '700', // Increased font weight
-                      fontSize: '15px', // Increased font size
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      fontSize: mob ? '10px' : '13px',
                       transition: 'all 0.3s',
                       border: '2px solid #a2783a',
                       cursor: 'pointer',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)', // Added shadow
-                      textTransform: 'uppercase', // Make text uppercase
-                      letterSpacing: '0.5px' // Add letter spacing
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                     }}
-                    onMouseEnter={(e) => {
-                      e.target.style.backgroundColor = '#8b6a30';
-                      e.target.style.borderColor = '#8b6a30';
-                      e.target.style.transform = 'translateY(-2px)';
-                      e.target.style.boxShadow = '0 4px 12px rgba(162, 120, 58, 0.4)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.backgroundColor = '#a2783a';
-                      e.target.style.borderColor = '#a2783a';
-                      e.target.style.transform = 'translateY(0)';
-                      e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                    }}
+                    onMouseEnter={(e) => { e.target.style.backgroundColor = '#8b6a30'; }}
+                    onMouseLeave={(e) => { e.target.style.backgroundColor = '#a2783a'; }}
                   >
-                    Book Now
+                    {mob ? 'Book' : 'Book Now'}
                   </button>
                 </div>
+                  );
+                })()}
               </div>
             </article>
           ))}
@@ -626,6 +611,62 @@ const UserBrowseEvents = () => {
           }}
         />
       )}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 768px) {
+          .events-browse-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+          }
+          .events-browse-grid article {
+            border-radius: 10px !important;
+          }
+          /* Card image */
+          .events-browse-grid article > div:first-child {
+            height: 100px !important;
+          }
+          /* Card body */
+          .event-card-body {
+            padding: 8px !important;
+          }
+          /* Title */
+          .event-card-title {
+            font-size: 12px !important;
+            margin-bottom: 3px !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          /* Meta (date/location) */
+          .event-card-meta {
+            font-size: 10px !important;
+            margin-bottom: 3px !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          /* Button row */
+          .event-card-actions {
+            flex-direction: row !important;
+            gap: 4px !important;
+            margin-top: auto !important;
+            padding-top: 6px !important;
+          }
+          /* Buttons */
+          .event-card-actions button,
+          .event-card-actions div {
+            flex: 1 !important;
+            padding: 6px 2px !important;
+            font-size: 10px !important;
+            letter-spacing: 0 !important;
+            text-transform: none !important;
+            border-radius: 6px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            font-weight: 600 !important;
+          }
+        }
+      ` }} />
     </UserLayout>
   );
 };

@@ -11,7 +11,9 @@ import useCoupon from "../hooks/useCoupon";
 import CouponSection from "./CouponSection";
 
 const FullServiceBookingModal = ({ isOpen, onClose, event, onSuccess }) => {
-  const { token } = useAuth();
+  const { token: contextToken } = useAuth();
+  // Fallback to localStorage in case context token is stale
+  const token = contextToken || localStorage.getItem("token");
 
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -241,7 +243,14 @@ const FullServiceBookingModal = ({ isOpen, onClose, event, onSuccess }) => {
     } catch (err) {
       console.error("❌ Booking error:", err);
       console.error("Error response:", err.response?.data);
-      toast.error(err.response?.data?.message || "Booking failed. Please try again.");
+      const msg = err.response?.data?.message || "Booking failed. Please try again.";
+      if (err.response?.status === 401) {
+        toast.error("Session expired. Please log in again.");
+        localStorage.removeItem("token");
+        window.location.href = "/login?redirect=booking";
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setSubmitting(false);
     }
