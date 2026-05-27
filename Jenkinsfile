@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        dependencyCheck 'owasp'
+        dependency-Check 'owasp'
     }
 
     environment {
