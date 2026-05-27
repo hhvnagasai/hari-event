@@ -1,3 +1,60 @@
-/frontend/node_modules
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Build files
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfvars
+
+# AWS
+*.pem
+.aws/
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+
+# Docker
+docker-compose.override.yml
+
+# SonarQube
+.scannerwork/
+
+# Coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/
+
+# Jenkins
+jenkins_home/
+
+# Misc
+*.bak
+*.swp/frontend/node_modules
 /backend/node_modules
 /backend/config
