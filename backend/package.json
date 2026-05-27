@@ -5,9 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "prestart": "powershell -Command \"try { Get-NetTCPConnection -LocalPort 5000 -ErrorAction Stop | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } } catch { }; exit 0\"",
-    "predev": "npm run prestart",
-    "start": "node server.js",
+        "start": "node server.js",
     "dev": "nodemon server.js"
   },
   "author": "",
