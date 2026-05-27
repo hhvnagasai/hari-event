@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        dependency-Check 'owasp'
-    }
-
     environment {
         SONAR_SCANNER = tool 'sonar-scanner'
     }
