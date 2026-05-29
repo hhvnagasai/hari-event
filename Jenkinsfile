@@ -117,7 +117,7 @@ stage('Push Frontend Image') {
         }
     }
 }
-}
+
 stage('Deploy to EKS') {
     steps {
         sh '''
@@ -133,4 +133,4 @@ stage('Deploy to EKS') {
     }
 }
 }
-
+}
