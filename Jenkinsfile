@@ -51,9 +51,15 @@ pipeline {
             }
         }
 
-        stage('Trivy Backend Scan') {
-            steps {
-                sh 'trivy image meghana-backend:v1'
+         stage('Trivy Backend Scan') {
+    steps {
+        sh '''
+        trivy fs . \
+        --severity HIGH,CRITICAL \
+        --exit-code 0
+        '''
+    }
+}
             }
         }
     }
