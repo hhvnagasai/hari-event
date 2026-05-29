@@ -16,7 +16,7 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
-                url: 'https://github.com/meghanamallela69-tech/meghana-pro.git'
+                url: 'https://https://github.com/hhvnagasai/hari-event.git'
             }
         }
 
