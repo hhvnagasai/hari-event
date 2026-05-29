@@ -73,3 +73,22 @@ pipeline {
             }
 
 }
+stage('Push Backend Image') {
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'dockerhub',
+                usernameVariable: 'DOCKER_USER',
+                passwordVariable: 'DOCKER_PASS'
+            )
+        ]) {
+            sh '''
+            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+
+            docker tag meghana-backend:v1 hhvnagasai/meghana-backend:v1
+
+            docker push hhvnagasai/meghana-backend:v1
+            '''
+        }
+    }
+}
