@@ -118,5 +118,19 @@ stage('Push Frontend Image') {
     }
 }
 }
+stage('Deploy to EKS') {
+    steps {
+        sh '''
+        aws eks update-kubeconfig \
+        --region ap-south-1 \
+        --name meghana-eks
+
+        kubectl apply -f k8s/
+
+        kubectl get pods
+        kubectl get svc
+        '''
+    }
+}
 }
 
