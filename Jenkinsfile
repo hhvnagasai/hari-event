@@ -52,8 +52,6 @@ pipeline {
         }
     }
 }
-            }
-        }
 
         stage('Build Backend Docker Image') {
             steps {
