@@ -70,7 +70,6 @@ pipeline {
         '''
     }
 }
-            }
 
 stage('Push Backend Image') {
     steps {
@@ -119,3 +118,5 @@ stage('Push Frontend Image') {
     }
 }
 }
+}
+
