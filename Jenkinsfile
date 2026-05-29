@@ -16,7 +16,7 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
-                url: 'https://https://github.com/hhvnagasai/hari-event.git'
+                url: 'https://github.com/hhvnagasai/hari-event.git'
             }
         }
 
