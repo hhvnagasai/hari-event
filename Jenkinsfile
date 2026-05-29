@@ -118,3 +118,4 @@ stage('Push Frontend Image') {
         }
     }
 }
+}
