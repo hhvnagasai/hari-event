@@ -72,7 +72,6 @@ pipeline {
 }
             }
 
-}
 stage('Push Backend Image') {
     steps {
         withCredentials([
@@ -88,6 +87,33 @@ stage('Push Backend Image') {
             docker tag meghana-backend:v1 hhvnagasai/meghana-backend:v1
 
             docker push hhvnagasai/meghana-backend:v1
+            '''
+        }
+    }
+}
+stage('Build Frontend Docker Image') {
+    steps {
+        dir('frontend') {
+            sh 'docker build -t meghana-frontend:v1 .'
+        }
+    }
+}
+
+stage('Push Frontend Image') {
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'dockerhub',
+                usernameVariable: 'DOCKER_USER',
+                passwordVariable: 'DOCKER_PASS'
+            )
+        ]) {
+            sh '''
+            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+
+            docker tag meghana-frontend:v1 hhvnagasai/meghana-frontend:v1
+
+            docker push hhvnagasai/meghana-frontend:v1
             '''
         }
     }
