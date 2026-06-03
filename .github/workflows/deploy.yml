@@ -18,8 +18,8 @@ jobs:
         with:
           node-version: 20
 
+      # Frontend Install
       - name: Frontend Install
-        id: frontend_install
         run: |
           cd frontend
           npm install > frontend-install.log 2>&1
@@ -28,23 +28,15 @@ jobs:
         if: failure()
         run: |
           ERROR=$(tail -20 frontend/frontend-install.log 2>/dev/null || echo "No log available")
+          MESSAGE="❌ Frontend Install Failed | Repository: ${{ github.repository }} | Branch: ${{ github.ref_name }} | Error: $ERROR"
 
           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
             -H "Content-Type: application/json" \
-            --data "{\"text\":\"❌ Frontend Dependency Installation Failed
-
-Repository: ${{ github.repository }}
-Branch: ${{ github.ref_name }}
-Commit: ${{ github.sha }}
-
-Error:
-$ERROR
-
-Run:
-https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+            -d "{\"text\":\"$MESSAGE\"}"
 
           exit 1
 
+      # Frontend Build
       - name: Frontend Build
         run: |
           cd frontend
@@ -54,22 +46,15 @@ https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}
         if: failure()
         run: |
           ERROR=$(tail -20 frontend/frontend-build.log 2>/dev/null || echo "No log available")
+          MESSAGE="❌ Frontend Build Failed | Repository: ${{ github.repository }} | Branch: ${{ github.ref_name }} | Error: $ERROR"
 
           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
             -H "Content-Type: application/json" \
-            --data "{\"text\":\"❌ Frontend Build Failed
-
-Repository: ${{ github.repository }}
-Branch: ${{ github.ref_name }}
-
-Error:
-$ERROR
-
-Run:
-https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+            -d "{\"text\":\"$MESSAGE\"}"
 
           exit 1
 
+      # Backend Install
       - name: Backend Install
         run: |
           cd backend
@@ -79,22 +64,15 @@ https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}
         if: failure()
         run: |
           ERROR=$(tail -20 backend/backend-install.log 2>/dev/null || echo "No log available")
+          MESSAGE="❌ Backend Install Failed | Repository: ${{ github.repository }} | Branch: ${{ github.ref_name }} | Error: $ERROR"
 
           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
             -H "Content-Type: application/json" \
-            --data "{\"text\":\"❌ Backend Dependency Installation Failed
-
-Repository: ${{ github.repository }}
-Branch: ${{ github.ref_name }}
-
-Error:
-$ERROR
-
-Run:
-https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+            -d "{\"text\":\"$MESSAGE\"}"
 
           exit 1
 
+      # Deploy To EC2
       - name: Deploy To EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -117,27 +95,20 @@ https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}
       - name: Notify Deployment Failure
         if: failure()
         run: |
+          MESSAGE="❌ EC2 Deployment Failed | Repository: ${{ github.repository }} | Branch: ${{ github.ref_name }}"
+
           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
             -H "Content-Type: application/json" \
-            --data "{\"text\":\"❌ EC2 Deployment Failed
-
-Repository: ${{ github.repository }}
-Branch: ${{ github.ref_name }}
-
-Run:
-https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+            -d "{\"text\":\"$MESSAGE\"}"
 
           exit 1
 
+      # Success Notification
       - name: Send Success Notification
         if: success()
         run: |
+          MESSAGE="✅ Deployment Successful | Repository: ${{ github.repository }} | Branch: ${{ github.ref_name }} | Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
             -H "Content-Type: application/json" \
-            --data "{\"text\":\"✅ Deployment Successful
-
-Repository: ${{ github.repository }}
-Branch: ${{ github.ref_name }}
-
-Run:
-https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+            -d "{\"text\":\"$MESSAGE\"}"
