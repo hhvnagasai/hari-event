@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,37 +18,84 @@ jobs:
         with:
           node-version: 20
 
-      - name: Create Logs Directory
-        run: mkdir -p logs
-
-      - name: Install Frontend Dependencies
+      - name: Frontend Install
+        id: frontend_install
         run: |
           cd frontend
-          npm install 2>&1 | tee ../logs/frontend-install.log
+          npm install > frontend-install.log 2>&1
 
-      - name: Build Frontend
+      - name: Notify Frontend Install Failure
+        if: failure()
+        run: |
+          ERROR=$(tail -20 frontend/frontend-install.log 2>/dev/null || echo "No log available")
+
+          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            --data "{\"text\":\"❌ Frontend Dependency Installation Failed
+
+Repository: ${{ github.repository }}
+Branch: ${{ github.ref_name }}
+Commit: ${{ github.sha }}
+
+Error:
+$ERROR
+
+Run:
+https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+
+          exit 1
+
+      - name: Frontend Build
         run: |
           cd frontend
-          npm run build 2>&1 | tee ../logs/frontend-build.log
+          npm run build > frontend-build.log 2>&1
 
-      - name: Install Backend Dependencies
+      - name: Notify Frontend Build Failure
+        if: failure()
+        run: |
+          ERROR=$(tail -20 frontend/frontend-build.log 2>/dev/null || echo "No log available")
+
+          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            --data "{\"text\":\"❌ Frontend Build Failed
+
+Repository: ${{ github.repository }}
+Branch: ${{ github.ref_name }}
+
+Error:
+$ERROR
+
+Run:
+https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+
+          exit 1
+
+      - name: Backend Install
         run: |
           cd backend
-          npm install --legacy-peer-deps 2>&1 | tee ../logs/backend-install.log
+          npm install --legacy-peer-deps > backend-install.log 2>&1
 
-      - name: Upload Build Logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-logs
-          path: logs/
+      - name: Notify Backend Install Failure
+        if: failure()
+        run: |
+          ERROR=$(tail -20 backend/backend-install.log 2>/dev/null || echo "No log available")
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
+          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            --data "{\"text\":\"❌ Backend Dependency Installation Failed
 
-    steps:
-      - name: Deploy to EC2
+Repository: ${{ github.repository }}
+Branch: ${{ github.ref_name }}
+
+Error:
+$ERROR
+
+Run:
+https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+
+          exit 1
+
+      - name: Deploy To EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -56,47 +103,41 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /root/hari-event
+
             git pull origin main
+
             cd backend
+
             npm install --legacy-peer-deps
+
             pm2 restart hari-backend || pm2 start server.js --name hari-backend
+
             pm2 save
 
-  notify-success:
-    needs: deploy
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Send Success Message
+      - name: Notify Deployment Failure
+        if: failure()
         run: |
           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
             -H "Content-Type: application/json" \
-            --data '{"text":"✅ Deployment Successful"}'
+            --data "{\"text\":\"❌ EC2 Deployment Failed
 
-  notify-failure:
-    if: failure()
-    needs: [build, deploy]
-    runs-on: ubuntu-latest
+Repository: ${{ github.repository }}
+Branch: ${{ github.ref_name }}
 
-    steps:
-      - name: Download Logs
-        continue-on-error: true
-        uses: actions/download-artifact@v4
-        with:
-          name: build-logs
-          path: logs
+Run:
+https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
 
-      - name: Extract Error Logs
+          exit 1
+
+      - name: Send Success Notification
+        if: success()
         run: |
-          if ls logs/*.log 1> /dev/null 2>&1; then
-            cat logs/*.log | tail -20 > error.log
-          else
-            echo "No logs available" > error.log
-          fi
-
-      - name: Send Failure Message
-        run: |
-          ERROR_MSG=$(cat error.log | tr '\n' ' ' | sed 's/"/\\"/g')
           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
             -H "Content-Type: application/json" \
-            --data "{\"text\":\"❌ Deployment Failed\n${ERROR_MSG}\"}"
+            --data "{\"text\":\"✅ Deployment Successful
+
+Repository: ${{ github.repository }}
+Branch: ${{ github.ref_name }}
+
+Run:
+https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
