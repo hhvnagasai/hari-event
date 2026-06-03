@@ -15,7 +15,7 @@
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-        node-version: 20
+          node-version: 20
 
       - name: Install Frontend Dependencies
         run: |
@@ -32,17 +32,17 @@
           cd backend
           npm install --legacy-peer-deps
     deploy:
-        needs: build
-        runs-on: ubuntu-latest
+      needs: build
+      runs-on: ubuntu-latest
 
         steps:
         - name: Deploy to EC2
           uses: appleboy/ssh-action@v1.0.3
         with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
           cd /root/hari-event
           git pull origin main
           cd backend
@@ -50,7 +50,7 @@
           pm2 restart hari-backend
           pm2 save
 
-  notify-success:
+notify-success:
     needs: deploy
     runs-on: ubuntu-latest
 
@@ -61,7 +61,7 @@
             -H "Content-Type: application/json" \
             --data "{\"text\":\"✅ Deployment Successful\nRepository: ${{ github.repository }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
 
-  notify-failure:
+notify-failure:
     if: failure()
     needs: [build, deploy]
     runs-on: ubuntu-latest
