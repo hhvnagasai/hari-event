@@ -70,3 +70,15 @@ jobs:
           -d '{
             "text":"❌ Deployment Failed\nRepository: hari-event\nCheck GitHub Actions logs for failure details."
           }'
+  notify-success:
+    needs: deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Success Message
+        run: |
+          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "text":"✅ Deployment Successful\nRepository: hari-event\nBranch: main"
+          }'
