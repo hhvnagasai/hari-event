@@ -22,27 +22,17 @@ steps:
   - name: Install Frontend Dependencies
     run: |
       cd frontend
-      npm install 2>&1 | tee frontend-install.log
+      npm install
 
   - name: Build Frontend
     run: |
       cd frontend
-      npm run build 2>&1 | tee frontend-build.log
+      npm run build
 
   - name: Install Backend Dependencies
     run: |
       cd backend
-      npm install --legacy-peer-deps 2>&1 | tee backend-install.log
-
-  - name: Upload Build Logs
-    if: always()
-    uses: actions/upload-artifact@v4
-    with:
-      name: build-logs
-      path: |
-        frontend/frontend-install.log
-        frontend/frontend-build.log
-        backend/backend-install.log
+      npm install --legacy-peer-deps
 ```
 
 deploy:
@@ -58,18 +48,11 @@ steps:
       username: ${{ secrets.EC2_USER }}
       key: ${{ secrets.EC2_SSH_KEY }}
       script: |
-        set -e
-
         cd /root/hari-event
-
         git pull origin main
-
         cd backend
-
         npm install --legacy-peer-deps
-
-        pm2 restart hari-backend || pm2 start server.js --name hari-backend
-
+        pm2 restart hari-backend
         pm2 save
 ```
 
@@ -83,7 +66,7 @@ steps:
     run: |
       curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
         -H "Content-Type: application/json" \
-        --data "{\"text\":\"✅ Deployment Successful\nRepository: ${{ github.repository }}\nBranch: main\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+        --data "{\"text\":\"✅ Deployment Successful\nRepository: ${{ github.repository }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
 ```
 
 notify-failure:
@@ -97,6 +80,6 @@ steps:
     run: |
       curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
         -H "Content-Type: application/json" \
-        --data "{\"text\":\"❌ Deployment Failed\nRepository: ${{ github.repository }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\nArtifacts: build-logs\"}"
+        --data "{\"text\":\"❌ Deployment Failed\nRepository: ${{ github.repository }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
 ```
 
