@@ -1,76 +1,112 @@
 name: Deploy Application
 
 on:
-  push:
-    branches:
-      - main
+push:
+branches:
+- main
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+build:
+runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+```
+steps:
+  - name: Checkout Code
+    uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+  - name: Setup Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: 20
 
-      - name: Install Frontend Dependencies
-        run: |
-          cd frontend
-          npm install
+  - name: Create Logs Directory
+    run: mkdir -p logs
 
-      - name: Build Frontend
-        run: |
-          cd frontend
-          npm run build
+  - name: Install Frontend Dependencies
+    run: |
+      cd frontend
+      npm install 2>&1 | tee ../logs/frontend-install.log
 
-      - name: Install Backend Dependencies
-        run: |
-          cd backend
-          npm install --legacy-peer-deps
+  - name: Build Frontend
+    run: |
+      cd frontend
+      npm run build 2>&1 | tee ../logs/frontend-build.log
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
+  - name: Install Backend Dependencies
+    run: |
+      cd backend
+      npm install --legacy-peer-deps 2>&1 | tee ../logs/backend-install.log
 
-    steps:
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd /root/hari-event
-            git pull origin main
-            cd backend
-            npm install --legacy-peer-deps
-            pm2 restart hari-backend
-            pm2 save
+  - name: Upload Build Logs
+    if: always()
+    uses: actions/upload-artifact@v4
+    with:
+      name: build-logs
+      path: logs/
+```
 
-  notify-success:
-    needs: deploy
-    runs-on: ubuntu-latest
+deploy:
+needs: build
+runs-on: ubuntu-latest
 
-    steps:
-      - name: Send Success Message
-        run: |
-          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-            -H "Content-Type: application/json" \
-            --data '{"text":"✅ Deployment Successful"}'
+```
+steps:
+  - name: Deploy to EC2
+    uses: appleboy/ssh-action@v1.0.3
+    with:
+      host: ${{ secrets.EC2_HOST }}
+      username: ${{ secrets.EC2_USER }}
+      key: ${{ secrets.EC2_SSH_KEY }}
+      script: |
+        cd /root/hari-event
 
-  notify-failure:
-    if: failure()
-    needs: [build, deploy]
-    runs-on: ubuntu-latest
+        git pull origin main
 
-    steps:
-      - name: Send Failure Message
-        run: |
-          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-            -H "Content-Type: application/json" \
-            --data '{"text":"❌ Deployment Failed"}'
+        cd backend
+
+        npm install --legacy-peer-deps
+
+        pm2 restart hari-backend || pm2 start server.js --name hari-backend
+
+        pm2 save
+```
+
+notify-success:
+needs: deploy
+runs-on: ubuntu-latest
+
+```
+steps:
+  - name: Send Success Message
+    run: |
+      curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+        -H "Content-Type: application/json" \
+        --data "{\"text\":\"✅ Deployment Successful\nRepository: ${{ github.repository }}\nBranch: main\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+```
+
+notify-failure:
+if: failure()
+needs: [build, deploy]
+runs-on: ubuntu-latest
+
+```
+steps:
+  - name: Download Logs
+    uses: actions/download-artifact@v4
+    with:
+      name: build-logs
+      path: logs
+
+  - name: Extract Error Logs
+    run: |
+      cat logs/*.log | tail -20 > error.log || echo "No logs found" > error.log
+
+  - name: Send Failure Message
+    run: |
+      ERROR_MSG=$(cat error.log | tr '\n' ' ' | sed 's/"/\\"/g')
+
+      curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+        -H "Content-Type: application/json" \
+        --data "{\"text\":\"❌ Deployment Failed\nRepository: ${{ github.repository }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nLast 20 Log Lines:\n${ERROR_MSG}\"}"
+```
+
