@@ -9,7 +9,6 @@ jobs:
 build:
 runs-on: ubuntu-latest
 
-```
 steps:
   - name: Checkout Code
     uses: actions/checkout@v4
@@ -43,13 +42,11 @@ steps:
     with:
       name: build-logs
       path: logs/
-```
 
 deploy:
 needs: build
 runs-on: ubuntu-latest
 
-```
 steps:
   - name: Deploy to EC2
     uses: appleboy/ssh-action@v1.0.3
@@ -69,27 +66,25 @@ steps:
         pm2 restart hari-backend || pm2 start server.js --name hari-backend
 
         pm2 save
-```
+
 
 notify-success:
 needs: deploy
 runs-on: ubuntu-latest
 
-```
 steps:
   - name: Send Success Message
     run: |
       curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
         -H "Content-Type: application/json" \
         --data "{\"text\":\"✅ Deployment Successful\nRepository: ${{ github.repository }}\nBranch: main\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
-```
+
 
 notify-failure:
 if: failure()
 needs: [build, deploy]
 runs-on: ubuntu-latest
 
-```
 steps:
   - name: Download Logs
     uses: actions/download-artifact@v4
@@ -108,5 +103,5 @@ steps:
       curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
         -H "Content-Type: application/json" \
         --data "{\"text\":\"❌ Deployment Failed\nRepository: ${{ github.repository }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nLast 20 Log Lines:\n${ERROR_MSG}\"}"
-```
+
 
