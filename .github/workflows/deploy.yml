@@ -57,7 +57,7 @@ jobs:
 
             pm2 save
 
-    notify-failure:
+  notify-failure:
     if: failure()
     needs: [build, deploy]
     runs-on: ubuntu-latest
