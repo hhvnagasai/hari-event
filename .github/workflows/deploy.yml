@@ -68,7 +68,7 @@ jobs:
           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
           -H "Content-Type: application/json" \
           -d '{
-            "text":"❌ Deployment Failed\nRepository: hari-event\nCheck GitHub Actions logs for failure details."
+            "text":"❌ Deployment Failed\nRepository: hari-event\nWorkflow: Deploy Application\nGitHub Run: https://github.com/'"${{ github.repository }}"'/actions/runs/'"${{ github.run_id }}"'"
           }'
           
   notify-success:
@@ -81,7 +81,6 @@ jobs:
           RESPONSE=$(curl -s -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
           -H "Content-Type: application/json" \
           -d '{
-            "text":"✅ Deployment Successful\nRepository: hari-event\nBranch: main"
-          }')
+            "text":"✅ Deployment Successful\nRepository: hari-event\nBranch: main\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           echo "$RESPONSE"
