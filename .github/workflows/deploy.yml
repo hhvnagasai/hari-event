@@ -18,79 +18,55 @@ jobs:
         with:
           node-version: 20
 
-      #################################################################
-      # FRONTEND INSTALL
-      #################################################################
-
       - name: Frontend Install
-        id: frontend_install
-        continue-on-error: true
         run: |
           cd frontend
-          npm install > ../frontend_install.log 2>&1
 
-      - name: Frontend Install Failure Notification
-        if: steps.frontend_install.outcome == 'failure'
-        run: |
-          ERROR=$(tail -20 frontend_install.log | tr '\n' ' ' | sed 's/"/\\"/g')
+          npm install > frontend_install.log 2>&1
 
-          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\"❌ FRONTEND INSTALL FAILED | Repo: ${{ github.repository }} | Error: $ERROR\"}"
+          if [ $? -ne 0 ]; then
+            ERROR=$(tail -20 frontend_install.log | tr '\n' ' ' | sed 's/"/\\"/g')
 
-          exit 1
+            curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"text\":\"❌ FRONTEND INSTALL FAILED | Repo: ${{ github.repository }} | Error: $ERROR\"}"
 
-      #################################################################
-      # FRONTEND BUILD
-      #################################################################
+            exit 1
+          fi
 
       - name: Frontend Build
-        id: frontend_build
-        continue-on-error: true
         run: |
           cd frontend
-          npm run build > ../frontend_build.log 2>&1
 
-      - name: Frontend Build Failure Notification
-        if: steps.frontend_build.outcome == 'failure'
-        run: |
-          ERROR=$(tail -20 frontend_build.log | tr '\n' ' ' | sed 's/"/\\"/g')
+          npm run build > frontend_build.log 2>&1
 
-          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\"❌ FRONTEND BUILD FAILED | Repo: ${{ github.repository }} | Error: $ERROR\"}"
+          if [ $? -ne 0 ]; then
+            ERROR=$(tail -20 frontend_build.log | tr '\n' ' ' | sed 's/"/\\"/g')
 
-          exit 1
+            curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"text\":\"❌ FRONTEND BUILD FAILED | Repo: ${{ github.repository }} | Error: $ERROR\"}"
 
-      #################################################################
-      # BACKEND INSTALL
-      #################################################################
+            exit 1
+          fi
 
       - name: Backend Install
-        id: backend_install
-        continue-on-error: true
         run: |
           cd backend
-          npm install --legacy-peer-deps > ../backend_install.log 2>&1
 
-      - name: Backend Install Failure Notification
-        if: steps.backend_install.outcome == 'failure'
-        run: |
-          ERROR=$(tail -20 backend_install.log | tr '\n' ' ' | sed 's/"/\\"/g')
+          npm install --legacy-peer-deps > backend_install.log 2>&1
 
-          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\"❌ BACKEND INSTALL FAILED | Repo: ${{ github.repository }} | Error: $ERROR\"}"
+          if [ $? -ne 0 ]; then
+            ERROR=$(tail -20 backend_install.log | tr '\n' ' ' | sed 's/"/\\"/g')
 
-          exit 1
+            curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"text\":\"❌ BACKEND INSTALL FAILED | Repo: ${{ github.repository }} | Error: $ERROR\"}"
 
-      #################################################################
-      # DEPLOY TO EC2
-      #################################################################
+            exit 1
+          fi
 
       - name: Deploy To EC2
-        id: ec2_deploy
-        continue-on-error: true
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -109,22 +85,8 @@ jobs:
 
             pm2 save
 
-      - name: Deployment Failure Notification
-        if: steps.ec2_deploy.outcome == 'failure'
-        run: |
-          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\"❌ EC2 DEPLOYMENT FAILED | Repo: ${{ github.repository }}\"}"
-
-          exit 1
-
-      #################################################################
-      # SUCCESS
-      #################################################################
-
       - name: Success Notification
-        if: success()
         run: |
           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\"✅ DEPLOYMENT SUCCESSFUL | Repo: ${{ github.repository }} | Branch: ${{ github.ref_name }} | Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+            -H "Content-Type: application/json" \
+            -d "{\"text\":\"✅ DEPLOYMENT SUCCESSFUL | Repo: ${{ github.repository }} | Branch: ${{ github.ref_name }} | Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
