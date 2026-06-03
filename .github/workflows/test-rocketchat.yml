@@ -1,0 +1,17 @@
+name: Test RocketChat
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-message:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Test Message
+        run: |
+          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "text":"🚀 Test message from GitHub Actions\nRepository: hari-event"
+          }'
