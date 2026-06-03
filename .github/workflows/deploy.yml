@@ -1,14 +1,15 @@
-  name: Deploy Application
+name: Deploy Application
 
-  on:
-    push:
-      branches:
-        - main
+on:
+  push:
+    branches:
+      - main
 
-  jobs:
-    build:
-      runs-on: ubuntu-latest
-      steps:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -31,26 +32,27 @@
         run: |
           cd backend
           npm install --legacy-peer-deps
-    deploy:
-      needs: build
-      runs-on: ubuntu-latest
 
-        steps:
-        - name: Deploy to EC2
-          uses: appleboy/ssh-action@v1.0.3
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-          cd /root/hari-event
-          git pull origin main
-          cd backend
-          npm install --legacy-peer-deps
-          pm2 restart hari-backend
-          pm2 save
+            cd /root/hari-event
+            git pull origin main
+            cd backend
+            npm install --legacy-peer-deps
+            pm2 restart hari-backend
+            pm2 save
 
-notify-success:
+  notify-success:
     needs: deploy
     runs-on: ubuntu-latest
 
@@ -59,9 +61,9 @@ notify-success:
         run: |
           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
             -H "Content-Type: application/json" \
-            --data "{\"text\":\"✅ Deployment Successful\nRepository: ${{ github.repository }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+            --data '{"text":"✅ Deployment Successful"}'
 
-notify-failure:
+  notify-failure:
     if: failure()
     needs: [build, deploy]
     runs-on: ubuntu-latest
@@ -71,5 +73,4 @@ notify-failure:
         run: |
           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
             -H "Content-Type: application/json" \
-            --data "{\"text\":\"❌ Deployment Failed\nRepository: ${{ github.repository }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
-
+            --data '{"text":"❌ Deployment Failed"}'
