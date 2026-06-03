@@ -76,9 +76,11 @@ jobs:
 
     steps:
       - name: Send Success Message
-        run: |
-          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-          -H "Content-Type: application/json" \
-          -d '{
-            "text":"✅ Deployment Successful\nRepository: hari-event\nBranch: main"
-          }'
+  run: |
+    RESPONSE=$(curl -s -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "text":"✅ Deployment Successful\nRepository: hari-event\nBranch: main"
+    }')
+
+    echo "$RESPONSE"
