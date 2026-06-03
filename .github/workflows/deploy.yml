@@ -58,8 +58,8 @@
       - name: Send Success Message
         run: |
           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-        -H "Content-Type: application/json" \
-        --data "{\"text\":\"✅ Deployment Successful\nRepository: ${{ github.repository }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+            -H "Content-Type: application/json" \
+            --data "{\"text\":\"✅ Deployment Successful\nRepository: ${{ github.repository }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
 
   notify-failure:
     if: failure()
@@ -69,7 +69,7 @@
     steps:
       - name: Send Failure Message
         run: |
-      curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-        -H "Content-Type: application/json" \
-        --data "{\"text\":\"❌ Deployment Failed\nRepository: ${{ github.repository }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            --data "{\"text\":\"❌ Deployment Failed\nRepository: ${{ github.repository }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
 
