@@ -32,12 +32,12 @@
           cd backend
           npm install --legacy-peer-deps
     deploy:
-      needs: build
+        needs: build
         runs-on: ubuntu-latest
 
         steps:
         - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.0.3
+          uses: appleboy/ssh-action@v1.0.3
         with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER }}
@@ -57,7 +57,7 @@
     steps:
       - name: Send Success Message
         run: |
-      curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
         -H "Content-Type: application/json" \
         --data "{\"text\":\"✅ Deployment Successful\nRepository: ${{ github.repository }}\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
 
