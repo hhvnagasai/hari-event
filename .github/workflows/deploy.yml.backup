@@ -1,0 +1,102 @@
+name: Deploy Application
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Create Logs Directory
+        run: mkdir -p logs
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm install 2>&1 | tee ../logs/frontend-install.log
+
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm run build 2>&1 | tee ../logs/frontend-build.log
+
+      - name: Install Backend Dependencies
+        run: |
+          cd backend
+          npm install --legacy-peer-deps 2>&1 | tee ../logs/backend-install.log
+
+      - name: Upload Build Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: logs/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /root/hari-event
+            git pull origin main
+            cd backend
+            npm install --legacy-peer-deps
+            pm2 restart hari-backend || pm2 start server.js --name hari-backend
+            pm2 save
+
+  notify-success:
+    needs: deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Success Message
+        run: |
+          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            --data '{"text":"✅ Deployment Successful"}'
+
+  notify-failure:
+    if: failure()
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Logs
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: build-logs
+          path: logs
+
+      - name: Extract Error Logs
+        run: |
+          if ls logs/*.log 1> /dev/null 2>&1; then
+            cat logs/*.log | tail -20 > error.log
+          else
+            echo "No logs available" > error.log
+          fi
+
+      - name: Send Failure Message
+        run: |
+          ERROR_MSG=$(cat error.log | tr '\n' ' ' | sed 's/"/\\"/g')
+          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            --data "{\"text\":\"❌ Deployment Failed\n${ERROR_MSG}\"}"
