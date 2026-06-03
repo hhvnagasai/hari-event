@@ -66,9 +66,8 @@ jobs:
       - name: Send Failure Message
         run: |
           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-      -H "Content-Type: application/json" \
-      --data "{\"text\":\"❌ Deployment Failed\nRepository: hari-event\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
-          
+            -H "Content-Type: application/json" \
+            --data "{\"text\":\"❌ Deployment Failed\nRepository: hari-event\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
   notify-success:
     needs: deploy
     runs-on: ubuntu-latest
@@ -76,7 +75,6 @@ jobs:
     steps:
       - name: Send Success Message
         run: |
-           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-      -H "Content-Type: application/json" \
-      --data "{\"text\":\"✅ Deployment Successful\nRepository: hari-event\nBranch: main\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
-          echo "$RESPONSE"
+          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            --data "{\"text\":\"✅ Deployment Successful\nRepository: hari-event\nBranch: main\nRun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
