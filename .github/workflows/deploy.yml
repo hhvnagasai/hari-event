@@ -128,3 +128,31 @@ jobs:
           curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
           -H "Content-Type: application/json" \
           -d "{\"text\":\"✅ DEPLOYMENT SUCCESSFUL | Repo: ${{ github.repository }} | Branch: ${{ github.ref_name }} | Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+
+  ai-failure-analysis:
+    if: failure()
+    needs: deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Failure To AI Analyzer
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cat > /tmp/error.log << EOF2
+            GitHub Actions Failure
+
+            Repository: ${{ github.repository }}
+
+            Branch: ${{ github.ref_name }}
+
+            Workflow: Deploy Application
+
+            Run URL:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            EOF2
+
+            /root/github-failure-handler/process-error.sh /tmp/error.log
