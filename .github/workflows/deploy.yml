@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Deploy and Notify
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -19,23 +18,43 @@ jobs:
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           script_stop: false
           command_timeout: 60m
-
           script: |
+
             REPO="${{ github.repository }}"
             BRANCH="${{ github.ref_name }}"
             WORKFLOW="${{ github.workflow }}"
             WEBHOOK="${{ secrets.ROCKETCHAT_WEBHOOK }}"
 
             send_failure() {
-              STAGE="$1"
-              ERROR_LOG="$2"
 
-              ERROR_LOG=$(echo "$ERROR_LOG" | tail -20 | sed 's/"/\\"/g')
+              STAGE="$1"
+              LOGFILE="$2"
+
+              ERROR_LOG=$(tail -30 "$LOGFILE" | sed 's/"/\\"/g')
 
               curl -s -X POST \
                 -H "Content-Type: application/json" \
                 -d "{
-                  \"text\":\"🚨 CI/CD FAILURE\n\nRepository : $REPO\nBranch : $BRANCH\nWorkflow : $WORKFLOW\n\nFailed Stage\n------------------------\n$STAGE\n------------------------\n\nError Log\n------------------------\n$ERROR_LOG\n------------------------\n\nResult\n------------------------\nDeployment Stopped\n------------------------\"
+                  \"text\":\"🚨 CI/CD FAILURE
+
+Repository : $REPO
+Branch     : $BRANCH
+Workflow   : $WORKFLOW
+
+Failed Stage
+------------------------
+$STAGE
+------------------------
+
+Error Log
+------------------------
+$ERROR_LOG
+------------------------
+
+Result
+------------------------
+Deployment Stopped
+------------------------\"
                 }" \
                 "$WEBHOOK"
 
@@ -43,40 +62,61 @@ jobs:
             }
 
             send_success() {
+
               curl -s -X POST \
                 -H "Content-Type: application/json" \
                 -d "{
-                  \"text\":\"✅ DEPLOYMENT SUCCESSFUL\n\nRepository : $REPO\nBranch : $BRANCH\nWorkflow : $WORKFLOW\n\nDeployment Summary\n------------------------\nGit Pull ✓\nBackend Install ✓\nFrontend Install ✓\nFrontend Build ✓\nPM2 Backend ✓\nPM2 Frontend ✓\n------------------------\n\nStatus\n------------------------\nProduction Updated Successfully\n------------------------\"
+                  \"text\":\"✅ DEPLOYMENT SUCCESSFUL
+
+Repository : $REPO
+Branch     : $BRANCH
+Workflow   : $WORKFLOW
+
+Deployment Summary
+------------------------
+Git Pull         ✓
+Backend Install  ✓
+Frontend Install ✓
+Frontend Build   ✓
+PM2 Backend      ✓
+PM2 Frontend     ✓
+------------------------
+
+Status
+------------------------
+Production Updated Successfully
+------------------------\"
                 }" \
                 "$WEBHOOK"
             }
 
-            cd /home/ec2-user/hari-event || send_failure "Repository Access" "Cannot access repository"
+            cd /home/ec2-user/hari-event || send_failure "Repository Access" "/etc/hosts"
 
-            OUTPUT=$(git fetch origin 2>&1 && git reset --hard origin/main 2>&1)
-            STATUS=$?
-            [ $STATUS -eq 0 ] || send_failure "Git Pull" "$OUTPUT"
+            git fetch origin > /tmp/git.log 2>&1
+            [ $? -eq 0 ] || send_failure "Git Pull" "/tmp/git.log"
 
-            OUTPUT=$(cd backend && npm install --legacy-peer-deps 2>&1)
-            STATUS=$?
-            [ $STATUS -eq 0 ] || send_failure "Backend Install" "$OUTPUT"
+            git reset --hard origin/main >> /tmp/git.log 2>&1
+            [ $? -eq 0 ] || send_failure "Git Pull" "/tmp/git.log"
 
-            OUTPUT=$(cd frontend && npm install --legacy-peer-deps 2>&1)
-            STATUS=$?
-            [ $STATUS -eq 0 ] || send_failure "Frontend Install" "$OUTPUT"
+            cd backend
 
-            OUTPUT=$(cd frontend && npm run build 2>&1)
-            STATUS=$?
-            [ $STATUS -eq 0 ] || send_failure "Frontend Build" "$OUTPUT"
+            npm install --legacy-peer-deps > /tmp/backend.log 2>&1
+            [ $? -eq 0 ] || send_failure "Backend Install" "/tmp/backend.log"
 
-            OUTPUT=$(pm2 restart hari-event-backend 2>&1)
-            STATUS=$?
-            [ $STATUS -eq 0 ] || send_failure "PM2 Restart Backend" "$OUTPUT"
+            cd ../frontend
 
-            OUTPUT=$(pm2 restart hari-event-frontend 2>&1)
-            STATUS=$?
-            [ $STATUS -eq 0 ] || send_failure "PM2 Restart Frontend" "$OUTPUT"
+            npm install --legacy-peer-deps > /tmp/frontend-install.log 2>&1
+            [ $? -eq 0 ] || send_failure "Frontend Install" "/tmp/frontend-install.log"
 
-            pm2 save >/dev/null 2>&1
+            npm run build > /tmp/frontend-build.log 2>&1
+            [ $? -eq 0 ] || send_failure "Frontend Build" "/tmp/frontend-build.log"
+
+            pm2 restart hari-event-backend > /tmp/pm2-backend.log 2>&1
+            [ $? -eq 0 ] || send_failure "PM2 Restart Backend" "/tmp/pm2-backend.log"
+
+            pm2 restart hari-event-frontend > /tmp/pm2-frontend.log 2>&1
+            [ $? -eq 0 ] || send_failure "PM2 Restart Frontend" "/tmp/pm2-frontend.log"
+
+            pm2 save > /dev/null 2>&1
 
             send_success
