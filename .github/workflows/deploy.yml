@@ -26,16 +26,14 @@ jobs:
             WEBHOOK="${{ secrets.ROCKETCHAT_WEBHOOK }}"
 
             send_failure() {
-
               STAGE="$1"
               LOGFILE="$2"
 
-              ERROR_LOG=$(tail -30 "$LOGFILE" | sed 's/"/\\"/g')
+              ERROR_LOG=$(tail -20 "$LOGFILE")
 
-              curl -s -X POST \
-                -H "Content-Type: application/json" \
-                -d "{
-                  \"text\":\"🚨 CI/CD FAILURE
+              cat >/tmp/rocketchat.json <<JSON
+{
+  "text": "🚨 CI/CD FAILURE
 
 Repository : $REPO
 Branch     : $BRANCH
@@ -54,8 +52,14 @@ $ERROR_LOG
 Result
 ------------------------
 Deployment Stopped
-------------------------\"
-                }" \
+------------------------"
+}
+JSON
+
+              curl -s \
+                -H "Content-Type: application/json" \
+                -X POST \
+                --data-binary @/tmp/rocketchat.json \
                 "$WEBHOOK"
 
               exit 1
@@ -63,10 +67,9 @@ Deployment Stopped
 
             send_success() {
 
-              curl -s -X POST \
-                -H "Content-Type: application/json" \
-                -d "{
-                  \"text\":\"✅ DEPLOYMENT SUCCESSFUL
+              cat >/tmp/rocketchat.json <<JSON
+{
+  "text": "✅ DEPLOYMENT SUCCESSFUL
 
 Repository : $REPO
 Branch     : $BRANCH
@@ -74,19 +77,25 @@ Workflow   : $WORKFLOW
 
 Deployment Summary
 ------------------------
-Git Pull         ✓
-Backend Install  ✓
+Git Pull ✓
+Backend Install ✓
 Frontend Install ✓
-Frontend Build   ✓
-PM2 Backend      ✓
-PM2 Frontend     ✓
+Frontend Build ✓
+PM2 Backend ✓
+PM2 Frontend ✓
 ------------------------
 
 Status
 ------------------------
 Production Updated Successfully
-------------------------\"
-                }" \
+------------------------"
+}
+JSON
+
+              curl -s \
+                -H "Content-Type: application/json" \
+                -X POST \
+                --data-binary @/tmp/rocketchat.json \
                 "$WEBHOOK"
             }
 
@@ -117,6 +126,6 @@ Production Updated Successfully
             pm2 restart hari-event-frontend > /tmp/pm2-frontend.log 2>&1
             [ $? -eq 0 ] || send_failure "PM2 Restart Frontend" "/tmp/pm2-frontend.log"
 
-            pm2 save > /dev/null 2>&1
+            pm2 save >/dev/null 2>&1
 
             send_success
