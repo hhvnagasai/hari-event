@@ -17,115 +17,33 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           script_stop: false
-          command_timeout: 60m
-          script: |
 
-            REPO="${{ github.repository }}"
-            BRANCH="${{ github.ref_name }}"
-            WORKFLOW="${{ github.workflow }}"
+          script: |
             WEBHOOK="${{ secrets.ROCKETCHAT_WEBHOOK }}"
 
-            send_failure() {
-              STAGE="$1"
-              LOGFILE="$2"
+            cd /home/ec2-user/hari-event/frontend
 
-              ERROR_LOG=$(tail -20 "$LOGFILE")
+            npm run build >/tmp/build.log 2>&1
 
-              cat >/tmp/rocketchat.json <<JSON
-{
-  "text": "🚨 CI/CD FAILURE
+            if [ $? -ne 0 ]; then
 
-Repository : $REPO
-Branch     : $BRANCH
-Workflow   : $WORKFLOW
+              ERROR_LOG=$(tail -20 /tmp/build.log | tr '"' "'" | sed ':a;N;$!ba;s/\n/\\n/g')
 
-Failed Stage
-------------------------
-$STAGE
-------------------------
-
-Error Log
-------------------------
-$ERROR_LOG
-------------------------
-
-Result
-------------------------
-Deployment Stopped
-------------------------"
-}
-JSON
+              printf '{"text":"🚨 CI/CD FAILURE\n\nFailed Stage: Frontend Build\n\nError Log\n%s"}' "$ERROR_LOG" > /tmp/rocket.json
 
               curl -s \
                 -H "Content-Type: application/json" \
                 -X POST \
-                --data-binary @/tmp/rocketchat.json \
+                --data @/tmp/rocket.json \
                 "$WEBHOOK"
 
               exit 1
-            }
+            fi
 
-            send_success() {
+            printf '{"text":"✅ DEPLOYMENT SUCCESSFUL"}' > /tmp/rocket.json
 
-              cat >/tmp/rocketchat.json <<JSON
-{
-  "text": "✅ DEPLOYMENT SUCCESSFUL
-
-Repository : $REPO
-Branch     : $BRANCH
-Workflow   : $WORKFLOW
-
-Deployment Summary
-------------------------
-Git Pull ✓
-Backend Install ✓
-Frontend Install ✓
-Frontend Build ✓
-PM2 Backend ✓
-PM2 Frontend ✓
-------------------------
-
-Status
-------------------------
-Production Updated Successfully
-------------------------"
-}
-JSON
-
-              curl -s \
-                -H "Content-Type: application/json" \
-                -X POST \
-                --data-binary @/tmp/rocketchat.json \
-                "$WEBHOOK"
-            }
-
-            cd /home/ec2-user/hari-event || send_failure "Repository Access" "/etc/hosts"
-
-            git fetch origin > /tmp/git.log 2>&1
-            [ $? -eq 0 ] || send_failure "Git Pull" "/tmp/git.log"
-
-            git reset --hard origin/main >> /tmp/git.log 2>&1
-            [ $? -eq 0 ] || send_failure "Git Pull" "/tmp/git.log"
-
-            cd backend
-
-            npm install --legacy-peer-deps > /tmp/backend.log 2>&1
-            [ $? -eq 0 ] || send_failure "Backend Install" "/tmp/backend.log"
-
-            cd ../frontend
-
-            npm install --legacy-peer-deps > /tmp/frontend-install.log 2>&1
-            [ $? -eq 0 ] || send_failure "Frontend Install" "/tmp/frontend-install.log"
-
-            npm run build > /tmp/frontend-build.log 2>&1
-            [ $? -eq 0 ] || send_failure "Frontend Build" "/tmp/frontend-build.log"
-
-            pm2 restart hari-event-backend > /tmp/pm2-backend.log 2>&1
-            [ $? -eq 0 ] || send_failure "PM2 Restart Backend" "/tmp/pm2-backend.log"
-
-            pm2 restart hari-event-frontend > /tmp/pm2-frontend.log 2>&1
-            [ $? -eq 0 ] || send_failure "PM2 Restart Frontend" "/tmp/pm2-frontend.log"
-
-            pm2 save >/dev/null 2>&1
-
-            send_success
+            curl -s \
+              -H "Content-Type: application/json" \
+              -X POST \
+              --data @/tmp/rocket.json \
+              "$WEBHOOK"
