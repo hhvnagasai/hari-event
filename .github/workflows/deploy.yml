@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Deploy and Notify
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -17,33 +18,97 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           script_stop: false
+          command_timeout: 60m
 
           script: |
+
+            REPO="${{ github.repository }}"
+            BRANCH="${{ github.ref_name }}"
+            WORKFLOW="${{ github.workflow }}"
+            RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             WEBHOOK="${{ secrets.ROCKETCHAT_WEBHOOK }}"
 
-            cd /home/ec2-user/hari-event/frontend
+            notify_failure() {
 
-            npm run build >/tmp/build.log 2>&1
+              STAGE="$1"
+              LOGFILE="$2"
 
-            if [ $? -ne 0 ]; then
+              FILE=$(grep -oE '[^ ]+\.(js|jsx|ts|tsx):[0-9]+:[0-9]+' "$LOGFILE" | tail -1 | cut -d: -f1)
+              LINE=$(grep -oE '[^ ]+\.(js|jsx|ts|tsx):[0-9]+:[0-9]+' "$LOGFILE" | tail -1 | cut -d: -f2)
+              COLUMN=$(grep -oE '[^ ]+\.(js|jsx|ts|tsx):[0-9]+:[0-9]+' "$LOGFILE" | tail -1 | cut -d: -f3)
 
-              ERROR_LOG=$(tail -20 /tmp/build.log | tr '"' "'" | sed ':a;N;$!ba;s/\n/\\n/g')
+              ERROR=$(grep -iE 'error|failed|exception|ERR!' "$LOGFILE" | tail -1)
 
-              printf '{"text":"🚨 CI/CD FAILURE\n\nFailed Stage: Frontend Build\n\nError Log\n%s"}' "$ERROR_LOG" > /tmp/rocket.json
+              [ -z "$FILE" ] && FILE="N/A"
+              [ -z "$LINE" ] && LINE="N/A"
+              [ -z "$COLUMN" ] && COLUMN="N/A"
+              [ -z "$ERROR" ] && ERROR="See Logs Below"
+
+              LOGS=$(tail -20 "$LOGFILE" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/'\''/g')
+
+              printf '{"text":"🚨 CI/CD FAILURE\n\nRepository : %s\nBranch : %s\nWorkflow : %s\n\nFailed Stage : %s\nFile : %s\nLine : %s\nColumn : %s\nError : %s\n\nRun URL : %s\n\nRecent Logs\n------------------------\n%s"}' \
+              "$REPO" \
+              "$BRANCH" \
+              "$WORKFLOW" \
+              "$STAGE" \
+              "$FILE" \
+              "$LINE" \
+              "$COLUMN" \
+              "$ERROR" \
+              "$RUN_URL" \
+              "$LOGS" > /tmp/rocket.json
 
               curl -s \
-                -H "Content-Type: application/json" \
-                -X POST \
-                --data @/tmp/rocket.json \
-                "$WEBHOOK"
-
-              exit 1
-            fi
-
-            printf '{"text":"✅ DEPLOYMENT SUCCESSFUL"}' > /tmp/rocket.json
-
-            curl -s \
               -H "Content-Type: application/json" \
               -X POST \
               --data @/tmp/rocket.json \
               "$WEBHOOK"
+
+              exit 1
+            }
+
+            notify_success() {
+
+              printf '{"text":"✅ DEPLOYMENT SUCCESSFUL\n\nRepository : %s\nBranch : %s\nWorkflow : %s\n\nGit Pull : SUCCESS\nBackend Install : SUCCESS\nFrontend Install : SUCCESS\nFrontend Build : SUCCESS\nPM2 Backend Restart : SUCCESS\nPM2 Frontend Restart : SUCCESS\n\nRun URL : %s"}' \
+              "$REPO" \
+              "$BRANCH" \
+              "$WORKFLOW" \
+              "$RUN_URL" > /tmp/rocket.json
+
+              curl -s \
+              -H "Content-Type: application/json" \
+              -X POST \
+              --data @/tmp/rocket.json \
+              "$WEBHOOK"
+            }
+
+            cd /home/ec2-user/hari-event || notify_failure "Repository Access" "/etc/hosts"
+
+            git fetch origin > /tmp/git.log 2>&1
+            [ $? -eq 0 ] || notify_failure "Git Pull" "/tmp/git.log"
+
+            git reset --hard origin/main >> /tmp/git.log 2>&1
+            [ $? -eq 0 ] || notify_failure "Git Pull" "/tmp/git.log"
+
+            cd backend
+
+            npm install --legacy-peer-deps > /tmp/backend.log 2>&1
+            [ $? -eq 0 ] || notify_failure "Backend Install" "/tmp/backend.log"
+
+            cd ../frontend
+
+            npm install --legacy-peer-deps > /tmp/frontend-install.log 2>&1
+            [ $? -eq 0 ] || notify_failure "Frontend Install" "/tmp/frontend-install.log"
+
+            npm run build > /tmp/frontend-build.log 2>&1
+            [ $? -eq 0 ] || notify_failure "Frontend Build" "/tmp/frontend-build.log"
+
+            pm2 restart hari-event-backend > /tmp/pm2-backend.log 2>&1
+            [ $? -eq 0 ] || notify_failure "PM2 Backend Restart" "/tmp/pm2-backend.log"
+
+            pm2 restart hari-event-frontend > /tmp/pm2-frontend.log 2>&1
+            [ $? -eq 0 ] || notify_failure "PM2 Frontend Restart" "/tmp/pm2-frontend.log"
+
+            pm2 save > /tmp/pm2-save.log 2>&1
+
+            notify_success
