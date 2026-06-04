@@ -10,158 +10,139 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      #################################################################
-      # FRONTEND INSTALL
-      #################################################################
-
-      - name: Frontend Install
-        id: frontend_install
-        continue-on-error: true
-        run: |
-          cd frontend
-          npm install > ../frontend_install.log 2>&1
-
-      - name: Frontend Install Failure Notification
-        if: steps.frontend_install.outcome == 'failure'
-        run: |
-          ERROR=$(tail -20 frontend_install.log | tr '\n' ' ' | sed 's/"/\\"/g')
-
-          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\"❌ FRONTEND INSTALL FAILED | Repo: ${{ github.repository }} | Error: $ERROR\"}"
-
-          exit 1
-
-      #################################################################
-      # FRONTEND BUILD
-      #################################################################
-
-      - name: Frontend Build
-        id: frontend_build
-        continue-on-error: true
-        run: |
-          cd frontend
-          npm run build > ../frontend_build.log 2>&1
-
-      - name: Frontend Build Failure Notification
-        if: steps.frontend_build.outcome == 'failure'
-        run: |
-          ERROR=$(tail -20 frontend_build.log | tr '\n' ' ' | sed 's/"/\\"/g')
-
-          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\"❌ FRONTEND BUILD FAILED | Repo: ${{ github.repository }} | Error: $ERROR\"}"
-
-          exit 1
-
-      #################################################################
-      # BACKEND INSTALL
-      #################################################################
-
-      - name: Backend Install
-        id: backend_install
-        continue-on-error: true
-        run: |
-          cd backend
-          npm install --legacy-peer-deps > ../backend_install.log 2>&1
-
-      - name: Backend Install Failure Notification
-        if: steps.backend_install.outcome == 'failure'
-        run: |
-          ERROR=$(tail -20 backend_install.log | tr '\n' ' ' | sed 's/"/\\"/g')
-
-          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\"❌ BACKEND INSTALL FAILED | Repo: ${{ github.repository }} | Error: $ERROR\"}"
-
-          exit 1
-
-      #################################################################
-      # DEPLOY TO EC2
-      #################################################################
-
-      - name: Deploy To EC2
-        id: ec2_deploy
-        continue-on-error: true
+      - name: Deploy Application
+        id: deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          script_stop: true
+          command_timeout: 60m
           script: |
-            cd /root/hari-event
 
-            git pull origin main
+            LOG_FILE=/tmp/deploy.log
+            STAGE_FILE=/tmp/current_stage
+            RESULT_FILE=/tmp/deploy_result.txt
 
-            cd backend
+            rm -f $LOG_FILE $STAGE_FILE $RESULT_FILE
 
-            npm install --legacy-peer-deps
+            touch $LOG_FILE
 
-            pm2 restart hari-backend || pm2 start server.js --name hari-backend
+            fail_stage() {
 
-            pm2 save
+              STAGE=$(cat $STAGE_FILE)
 
-      - name: Deployment Failure Notification
-        if: steps.ec2_deploy.outcome == 'failure'
-        run: |
-          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\"❌ EC2 DEPLOYMENT FAILED | Repo: ${{ github.repository }}\"}"
+              echo "STATUS=FAILED" > $RESULT_FILE
+              echo "STAGE=$STAGE" >> $RESULT_FILE
 
-          exit 1
+              echo "ERROR_LOG<<EOF" >> $RESULT_FILE
+              tail -30 $LOG_FILE >> $RESULT_FILE
+              echo "EOF" >> $RESULT_FILE
 
-      #################################################################
-      # SUCCESS
-      #################################################################
+              cat $RESULT_FILE
 
-      - name: Success Notification
+              exit 1
+            }
+
+            echo "Git Pull" > $STAGE_FILE
+
+            cd /root/hari-event || fail_stage
+
+            git fetch origin >> $LOG_FILE 2>&1 || fail_stage
+            git reset --hard origin/main >> $LOG_FILE 2>&1 || fail_stage
+
+            echo "Backend Install" > $STAGE_FILE
+
+            cd /root/hari-event/backend || fail_stage
+
+            npm install --legacy-peer-deps >> $LOG_FILE 2>&1 || fail_stage
+
+            echo "Frontend Install" > $STAGE_FILE
+
+            cd /root/hari-event/frontend || fail_stage
+
+            npm install --legacy-peer-deps >> $LOG_FILE 2>&1 || fail_stage
+
+            echo "Frontend Build" > $STAGE_FILE
+
+            npm run build >> $LOG_FILE 2>&1 || fail_stage
+
+            echo "PM2 Restart Backend" > $STAGE_FILE
+
+            pm2 restart hari-event-backend >> $LOG_FILE 2>&1 || fail_stage
+
+            echo "PM2 Restart Frontend" > $STAGE_FILE
+
+            pm2 restart hari-event-frontend >> $LOG_FILE 2>&1 || fail_stage
+
+            pm2 save >> $LOG_FILE 2>&1
+
+            echo "STATUS=SUCCESS" > $RESULT_FILE
+
+            echo "SUCCESS_LOG<<EOF" >> $RESULT_FILE
+            tail -20 $LOG_FILE >> $RESULT_FILE
+            echo "EOF" >> $RESULT_FILE
+
+            cat $RESULT_FILE
+
+      - name: Rocket.Chat Success Notification
         if: success()
         run: |
-          curl -X POST "${{ secrets.ROCKETCHAT_WEBHOOK }}" \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\"✅ DEPLOYMENT SUCCESSFUL | Repo: ${{ github.repository }} | Branch: ${{ github.ref_name }} | Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
 
-      - name: Upload Failure Logs
+          MESSAGE=$(cat <<EOF2
+{
+  "text": "✅ DEPLOYMENT SUCCESSFUL
+
+Repository : ${{ github.repository }}
+Branch     : ${{ github.ref_name }}
+Workflow   : ${{ github.workflow }}
+
+Deployment Summary
+────────────────────────────
+Git Pull         ✓
+Backend Install  ✓
+Frontend Install ✓
+Frontend Build   ✓
+PM2 Restart      ✓
+────────────────────────────
+
+Status
+────────────────────────────
+Production Updated Successfully
+────────────────────────────"
+}
+EOF2
+)
+
+          curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d "$MESSAGE" \
+            "${{ secrets.ROCKETCHAT_WEBHOOK_URL }}"
+
+      - name: Rocket.Chat Failure Notification
         if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pipeline-logs
-          path: |
-            frontend_install.log
-            frontend_build.log
-            backend_install.log
-  ai-failure-analysis:
-    if: failure()
-    needs: deploy
-    runs-on: ubuntu-latest
+        run: |
 
-    steps:
-      - name: Send Failure To AI Analyzer
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cat > /tmp/error.log << EOF2
-            GitHub Actions Failure
+          MESSAGE=$(cat <<EOF2
+{
+  "text": "🚨 CI/CD FAILURE
 
-            Repository: ${{ github.repository }}
+Repository : ${{ github.repository }}
+Branch     : ${{ github.ref_name }}
+Workflow   : ${{ github.workflow }}
 
-            Branch: ${{ github.ref_name }}
+Deployment failed on EC2.
 
-            Workflow: Deploy Application
+Please check the failed stage and deployment logs on the server."
+}
+EOF2
+)
 
-            Run URL:
-            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            EOF2
-
-            bash /opt/ai-analysis/process-error.sh /tmp/error.log
+          curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d "$MESSAGE" \
+            "${{ secrets.ROCKETCHAT_WEBHOOK_URL }}"
