@@ -37,32 +37,43 @@ jobs:
               LINE=$(grep -oE '[^ ]+\.(js|jsx|ts|tsx):[0-9]+:[0-9]+' "$LOGFILE" | tail -1 | cut -d: -f2)
               COLUMN=$(grep -oE '[^ ]+\.(js|jsx|ts|tsx):[0-9]+:[0-9]+' "$LOGFILE" | tail -1 | cut -d: -f3)
 
-              ERROR=$(grep -iE 'error|failed|exception|ERR!' "$LOGFILE" | tail -1)
+              ERROR=$(grep -iE 'error|failed|exception|ERR!|not found' "$LOGFILE" | tail -1)
 
               [ -z "$FILE" ] && FILE="N/A"
               [ -z "$LINE" ] && LINE="N/A"
               [ -z "$COLUMN" ] && COLUMN="N/A"
               [ -z "$ERROR" ] && ERROR="See Logs Below"
 
-              LOGS=$(tail -20 "$LOGFILE" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/'\''/g')
+              {
+                echo "{"
+                echo "  \"text\": \"🚨 CI/CD FAILURE"
+                echo ""
+                echo "Repository : $REPO"
+                echo "Branch     : $BRANCH"
+                echo "Workflow   : $WORKFLOW"
+                echo ""
+                echo "Failed Stage : $STAGE"
+                echo ""
+                echo "File        : $FILE"
+                echo "Line        : $LINE"
+                echo "Column      : $COLUMN"
+                echo ""
+                echo "Error"
+                echo "----------------------------------------"
+                echo "$ERROR"
+                echo "----------------------------------------"
+                echo ""
+                echo "Logs"
+                echo "----------------------------------------"
+                tail -20 "$LOGFILE"
+                echo "----------------------------------------\"}"
+              } > /tmp/rocket.json
 
-              printf '{"text":"🚨 CI/CD FAILURE\n\nRepository : %s\nBranch : %s\nWorkflow : %s\n\nFailed Stage : %s\nFile : %s\nLine : %s\nColumn : %s\nError : %s\n\nRun URL : %s\n\nRecent Logs\n------------------------\n%s"}' \
-              "$REPO" \
-              "$BRANCH" \
-              "$WORKFLOW" \
-              "$STAGE" \
-              "$FILE" \
-              "$LINE" \
-              "$COLUMN" \
-              "$ERROR" \
-              "$RUN_URL" \
-              "$LOGS" > /tmp/rocket.json
-
-              curl -s \
-              -H "Content-Type: application/json" \
-              -X POST \
-              --data @/tmp/rocket.json \
-              "$WEBHOOK"
+              curl -s 
+                -H "Content-Type: application/json" 
+                -X POST 
+                --data @/tmp/rocket.json 
+                "$WEBHOOK"
 
               exit 1
             }
