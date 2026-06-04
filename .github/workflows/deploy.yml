@@ -25,7 +25,6 @@ jobs:
             REPO="${{ github.repository }}"
             BRANCH="${{ github.ref_name }}"
             WORKFLOW="${{ github.workflow }}"
-            RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             WEBHOOK="${{ secrets.ROCKETCHAT_WEBHOOK }}"
 
             notify_failure() {
@@ -33,46 +32,39 @@ jobs:
               STAGE="$1"
               LOGFILE="$2"
 
-              FILE=$(grep -oE '[^ ]+\.(js|jsx|ts|tsx):[0-9]+:[0-9]+' "$LOGFILE" | tail -1 | cut -d: -f1)
-              LINE=$(grep -oE '[^ ]+\.(js|jsx|ts|tsx):[0-9]+:[0-9]+' "$LOGFILE" | tail -1 | cut -d: -f2)
-              COLUMN=$(grep -oE '[^ ]+\.(js|jsx|ts|tsx):[0-9]+:[0-9]+' "$LOGFILE" | tail -1 | cut -d: -f3)
+              LOGS=$(tail -20 "$LOGFILE")
 
-              ERROR=$(grep -iE 'error|failed|exception|ERR!|not found' "$LOGFILE" | tail -1)
+              MESSAGE=$(cat <<MSG
+🚨 CI/CD FAILURE
 
-              [ -z "$FILE" ] && FILE="N/A"
-              [ -z "$LINE" ] && LINE="N/A"
-              [ -z "$COLUMN" ] && COLUMN="N/A"
-              [ -z "$ERROR" ] && ERROR="See Logs Below"
+Repository : $REPO
+Branch     : $BRANCH
+Workflow   : $WORKFLOW
 
-              {
-                echo "{"
-                echo "  \"text\": \"🚨 CI/CD FAILURE"
-                echo ""
-                echo "Repository : $REPO"
-                echo "Branch     : $BRANCH"
-                echo "Workflow   : $WORKFLOW"
-                echo ""
-                echo "Failed Stage : $STAGE"
-                echo ""
-                echo "File        : $FILE"
-                echo "Line        : $LINE"
-                echo "Column      : $COLUMN"
-                echo ""
-                echo "Error"
-                echo "----------------------------------------"
-                echo "$ERROR"
-                echo "----------------------------------------"
-                echo ""
-                echo "Logs"
-                echo "----------------------------------------"
-                tail -20 "$LOGFILE"
-                echo "----------------------------------------\"}"
-              } > /tmp/rocket.json
+Failed Stage : $STAGE
 
-              curl -s 
-                -H "Content-Type: application/json" 
-                -X POST 
-                --data @/tmp/rocket.json 
+Logs
+----------------------------------------
+$LOGS
+----------------------------------------
+MSG
+)
+
+              export MESSAGE
+
+              python3 - <<'PY' > /tmp/rocket.json
+import json
+import os
+
+print(json.dumps({
+    "text": os.environ["MESSAGE"]
+}))
+PY
+
+              curl -s \
+                -H "Content-Type: application/json" \
+                -X POST \
+                --data @/tmp/rocket.json \
                 "$WEBHOOK"
 
               exit 1
@@ -80,45 +72,69 @@ jobs:
 
             notify_success() {
 
-              printf '{"text":"✅ DEPLOYMENT SUCCESSFUL\n\nRepository : %s\nBranch : %s\nWorkflow : %s\n\nGit Pull : SUCCESS\nBackend Install : SUCCESS\nFrontend Install : SUCCESS\nFrontend Build : SUCCESS\nPM2 Backend Restart : SUCCESS\nPM2 Frontend Restart : SUCCESS\n\nRun URL : %s"}' \
-              "$REPO" \
-              "$BRANCH" \
-              "$WORKFLOW" \
-              "$RUN_URL" > /tmp/rocket.json
+              MESSAGE=$(cat <<MSG
+✅ DEPLOYMENT SUCCESSFUL
+
+Repository : $REPO
+Branch     : $BRANCH
+Workflow   : $WORKFLOW
+
+Deployment Summary
+----------------------------------------
+Git Pull               : SUCCESS
+Backend Install        : SUCCESS
+Frontend Install       : SUCCESS
+Frontend Build         : SUCCESS
+PM2 Backend Restart    : SUCCESS
+PM2 Frontend Restart   : SUCCESS
+----------------------------------------
+MSG
+)
+
+              export MESSAGE
+
+              python3 - <<'PY' > /tmp/rocket.json
+import json
+import os
+
+print(json.dumps({
+    "text": os.environ["MESSAGE"]
+}))
+PY
 
               curl -s \
-              -H "Content-Type: application/json" \
-              -X POST \
-              --data @/tmp/rocket.json \
-              "$WEBHOOK"
+                -H "Content-Type: application/json" \
+                -X POST \
+                --data @/tmp/rocket.json \
+                "$WEBHOOK"
             }
 
-            cd /home/ec2-user/hari-event || notify_failure "Repository Access" "/etc/hosts"
+            cd /home/ec2-user/hari-event || notify_failure "Repository Access" /etc/hosts
 
             git fetch origin > /tmp/git.log 2>&1
-            [ $? -eq 0 ] || notify_failure "Git Pull" "/tmp/git.log"
+            [ $? -eq 0 ] || notify_failure "Git Fetch" /tmp/git.log
 
             git reset --hard origin/main >> /tmp/git.log 2>&1
-            [ $? -eq 0 ] || notify_failure "Git Pull" "/tmp/git.log"
+            [ $? -eq 0 ] || notify_failure "Git Reset" /tmp/git.log
 
             cd backend
 
             npm install --legacy-peer-deps > /tmp/backend.log 2>&1
-            [ $? -eq 0 ] || notify_failure "Backend Install" "/tmp/backend.log"
+            [ $? -eq 0 ] || notify_failure "Backend Install" /tmp/backend.log
 
             cd ../frontend
 
             npm install --legacy-peer-deps > /tmp/frontend-install.log 2>&1
-            [ $? -eq 0 ] || notify_failure "Frontend Install" "/tmp/frontend-install.log"
+            [ $? -eq 0 ] || notify_failure "Frontend Install" /tmp/frontend-install.log
 
             npm run build > /tmp/frontend-build.log 2>&1
-            [ $? -eq 0 ] || notify_failure "Frontend Build" "/tmp/frontend-build.log"
+            [ $? -eq 0 ] || notify_failure "Frontend Build" /tmp/frontend-build.log
 
             pm2 restart hari-event-backend > /tmp/pm2-backend.log 2>&1
-            [ $? -eq 0 ] || notify_failure "PM2 Backend Restart" "/tmp/pm2-backend.log"
+            [ $? -eq 0 ] || notify_failure "PM2 Backend Restart" /tmp/pm2-backend.log
 
             pm2 restart hari-event-frontend > /tmp/pm2-frontend.log 2>&1
-            [ $? -eq 0 ] || notify_failure "PM2 Frontend Restart" "/tmp/pm2-frontend.log"
+            [ $? -eq 0 ] || notify_failure "PM2 Frontend Restart" /tmp/pm2-frontend.log
 
             pm2 save > /tmp/pm2-save.log 2>&1
 
