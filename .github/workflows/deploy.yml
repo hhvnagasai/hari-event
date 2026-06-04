@@ -10,55 +10,73 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy To EC2
+
+      - name: Deploy and Notify
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          script_stop: true
+          script_stop: false
           command_timeout: 60m
+
           script: |
+            REPO="${{ github.repository }}"
+            BRANCH="${{ github.ref_name }}"
+            WORKFLOW="${{ github.workflow }}"
+            WEBHOOK="${{ secrets.ROCKETCHAT_WEBHOOK }}"
 
-            set -e
+            send_failure() {
+              STAGE="$1"
+              ERROR_LOG="$2"
 
-            cd /home/ec2-user/hari-event
+              ERROR_LOG=$(echo "$ERROR_LOG" | tail -20 | sed 's/"/\\"/g')
 
-            echo "========== GIT PULL =========="
-            git fetch origin
-            git reset --hard origin/main
+              curl -s -X POST \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"text\":\"🚨 CI/CD FAILURE\n\nRepository : $REPO\nBranch : $BRANCH\nWorkflow : $WORKFLOW\n\nFailed Stage\n------------------------\n$STAGE\n------------------------\n\nError Log\n------------------------\n$ERROR_LOG\n------------------------\n\nResult\n------------------------\nDeployment Stopped\n------------------------\"
+                }" \
+                "$WEBHOOK"
 
-            echo "========== BACKEND INSTALL =========="
-            cd backend
-            npm install --legacy-peer-deps
+              exit 1
+            }
 
-            echo "========== FRONTEND INSTALL =========="
-            cd ../frontend
-            npm install --legacy-peer-deps
+            send_success() {
+              curl -s -X POST \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"text\":\"✅ DEPLOYMENT SUCCESSFUL\n\nRepository : $REPO\nBranch : $BRANCH\nWorkflow : $WORKFLOW\n\nDeployment Summary\n------------------------\nGit Pull ✓\nBackend Install ✓\nFrontend Install ✓\nFrontend Build ✓\nPM2 Backend ✓\nPM2 Frontend ✓\n------------------------\n\nStatus\n------------------------\nProduction Updated Successfully\n------------------------\"
+                }" \
+                "$WEBHOOK"
+            }
 
-            echo "========== FRONTEND BUILD =========="
-            npm run build
+            cd /home/ec2-user/hari-event || send_failure "Repository Access" "Cannot access repository"
 
-            echo "========== PM2 BACKEND =========="
-            pm2 restart hari-event-backend
+            OUTPUT=$(git fetch origin 2>&1 && git reset --hard origin/main 2>&1)
+            STATUS=$?
+            [ $STATUS -eq 0 ] || send_failure "Git Pull" "$OUTPUT"
 
-            echo "========== PM2 FRONTEND =========="
-            pm2 restart hari-event-frontend
+            OUTPUT=$(cd backend && npm install --legacy-peer-deps 2>&1)
+            STATUS=$?
+            [ $STATUS -eq 0 ] || send_failure "Backend Install" "$OUTPUT"
 
-            pm2 save
+            OUTPUT=$(cd frontend && npm install --legacy-peer-deps 2>&1)
+            STATUS=$?
+            [ $STATUS -eq 0 ] || send_failure "Frontend Install" "$OUTPUT"
 
-      - name: RocketChat Success
-        if: success()
-        run: |
-          curl -X POST \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\"✅ DEPLOYMENT SUCCESSFUL\n\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nWorkflow: ${{ github.workflow }}\n\nStatus: Production Updated Successfully\"}" \
-          "${{ secrets.ROCKETCHAT_WEBHOOK }}"
+            OUTPUT=$(cd frontend && npm run build 2>&1)
+            STATUS=$?
+            [ $STATUS -eq 0 ] || send_failure "Frontend Build" "$OUTPUT"
 
-      - name: RocketChat Failure
-        if: failure()
-        run: |
-          curl -X POST \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\"🚨 CI/CD FAILURE\n\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nWorkflow: ${{ github.workflow }}\n\nDeployment Failed\"}" \
-          "${{ secrets.ROCKETCHAT_WEBHOOK }}"
+            OUTPUT=$(pm2 restart hari-event-backend 2>&1)
+            STATUS=$?
+            [ $STATUS -eq 0 ] || send_failure "PM2 Restart Backend" "$OUTPUT"
+
+            OUTPUT=$(pm2 restart hari-event-frontend 2>&1)
+            STATUS=$?
+            [ $STATUS -eq 0 ] || send_failure "PM2 Restart Frontend" "$OUTPUT"
+
+            pm2 save >/dev/null 2>&1
+
+            send_success
