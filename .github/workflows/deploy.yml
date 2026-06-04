@@ -155,4 +155,4 @@ jobs:
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
             EOF2
 
-            /root/github-failure-handler/process-error.sh /tmp/error.log
+            bash /opt/ai-analysis/process-error.sh /tmp/error.log
