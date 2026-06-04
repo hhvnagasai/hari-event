@@ -14,7 +14,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy Application
-        id: deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -23,126 +22,45 @@ jobs:
           script_stop: true
           command_timeout: 60m
           script: |
-
             LOG_FILE=/tmp/deploy.log
-            STAGE_FILE=/tmp/current_stage
-            RESULT_FILE=/tmp/deploy_result.txt
 
-            rm -f $LOG_FILE $STAGE_FILE $RESULT_FILE
-
+            rm -f $LOG_FILE
             touch $LOG_FILE
 
-            fail_stage() {
+            cd /root/hari-event
 
-              STAGE=$(cat $STAGE_FILE)
+            git fetch origin >> $LOG_FILE 2>&1
+            git reset --hard origin/main >> $LOG_FILE 2>&1
 
-              echo "STATUS=FAILED" > $RESULT_FILE
-              echo "STAGE=$STAGE" >> $RESULT_FILE
+            cd /root/hari-event/backend
+            npm install --legacy-peer-deps >> $LOG_FILE 2>&1
 
-              echo "ERROR_LOG<<EOF" >> $RESULT_FILE
-              tail -30 $LOG_FILE >> $RESULT_FILE
-              echo "EOF" >> $RESULT_FILE
+            cd /root/hari-event/frontend
+            npm install --legacy-peer-deps >> $LOG_FILE 2>&1
 
-              cat $RESULT_FILE
+            npm run build >> $LOG_FILE 2>&1
 
-              exit 1
-            }
-
-            echo "Git Pull" > $STAGE_FILE
-
-            cd /root/hari-event || fail_stage
-
-            git fetch origin >> $LOG_FILE 2>&1 || fail_stage
-            git reset --hard origin/main >> $LOG_FILE 2>&1 || fail_stage
-
-            echo "Backend Install" > $STAGE_FILE
-
-            cd /root/hari-event/backend || fail_stage
-
-            npm install --legacy-peer-deps >> $LOG_FILE 2>&1 || fail_stage
-
-            echo "Frontend Install" > $STAGE_FILE
-
-            cd /root/hari-event/frontend || fail_stage
-
-            npm install --legacy-peer-deps >> $LOG_FILE 2>&1 || fail_stage
-
-            echo "Frontend Build" > $STAGE_FILE
-
-            npm run build >> $LOG_FILE 2>&1 || fail_stage
-
-            echo "PM2 Restart Backend" > $STAGE_FILE
-
-            pm2 restart hari-event-backend >> $LOG_FILE 2>&1 || fail_stage
-
-            echo "PM2 Restart Frontend" > $STAGE_FILE
-
-            pm2 restart hari-event-frontend >> $LOG_FILE 2>&1 || fail_stage
+            pm2 restart hari-event-backend >> $LOG_FILE 2>&1
+            pm2 restart hari-event-frontend >> $LOG_FILE 2>&1
 
             pm2 save >> $LOG_FILE 2>&1
-
-            echo "STATUS=SUCCESS" > $RESULT_FILE
-
-            echo "SUCCESS_LOG<<EOF" >> $RESULT_FILE
-            tail -20 $LOG_FILE >> $RESULT_FILE
-            echo "EOF" >> $RESULT_FILE
-
-            cat $RESULT_FILE
 
       - name: Rocket.Chat Success Notification
         if: success()
         run: |
-
-          MESSAGE=$(cat <<EOF2
-{
-  "text": "✅ DEPLOYMENT SUCCESSFUL
-
-Repository : ${{ github.repository }}
-Branch     : ${{ github.ref_name }}
-Workflow   : ${{ github.workflow }}
-
-Deployment Summary
-────────────────────────────
-Git Pull         ✓
-Backend Install  ✓
-Frontend Install ✓
-Frontend Build   ✓
-PM2 Restart      ✓
-────────────────────────────
-
-Status
-────────────────────────────
-Production Updated Successfully
-────────────────────────────"
-}
-EOF2
-)
-
           curl -s -X POST \
             -H "Content-Type: application/json" \
-            -d "$MESSAGE" \
+            -d '{
+              "text":"✅ DEPLOYMENT SUCCESSFUL\n\nRepository : ${{ github.repository }}\nBranch : ${{ github.ref_name }}\nWorkflow : ${{ github.workflow }}\n\nStatus : Production Updated Successfully"
+            }' \
             "${{ secrets.ROCKETCHAT_WEBHOOK_URL }}"
 
       - name: Rocket.Chat Failure Notification
         if: failure()
         run: |
-
-          MESSAGE=$(cat <<EOF2
-{
-  "text": "🚨 CI/CD FAILURE
-
-Repository : ${{ github.repository }}
-Branch     : ${{ github.ref_name }}
-Workflow   : ${{ github.workflow }}
-
-Deployment failed on EC2.
-
-Please check the failed stage and deployment logs on the server."
-}
-EOF2
-)
-
           curl -s -X POST \
             -H "Content-Type: application/json" \
-            -d "$MESSAGE" \
+            -d '{
+              "text":"🚨 CI/CD FAILURE\n\nRepository : ${{ github.repository }}\nBranch : ${{ github.ref_name }}\nWorkflow : ${{ github.workflow }}\n\nDeployment Failed"
+            }' \
             "${{ secrets.ROCKETCHAT_WEBHOOK_URL }}"
