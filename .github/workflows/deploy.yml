@@ -10,57 +10,55 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Deploy Application
+      - name: Deploy To EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
+          username: ec2-user
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           script_stop: true
           command_timeout: 60m
           script: |
-            LOG_FILE=/tmp/deploy.log
 
-            rm -f $LOG_FILE
-            touch $LOG_FILE
+            set -e
 
-            cd /root/hari-event
+            cd /home/ec2-user/hari-event
 
-            git fetch origin >> $LOG_FILE 2>&1
-            git reset --hard origin/main >> $LOG_FILE 2>&1
+            echo "========== GIT PULL =========="
+            git fetch origin
+            git reset --hard origin/main
 
-            cd /root/hari-event/backend
-            npm install --legacy-peer-deps >> $LOG_FILE 2>&1
+            echo "========== BACKEND INSTALL =========="
+            cd backend
+            npm install --legacy-peer-deps
 
-            cd /root/hari-event/frontend
-            npm install --legacy-peer-deps >> $LOG_FILE 2>&1
+            echo "========== FRONTEND INSTALL =========="
+            cd ../frontend
+            npm install --legacy-peer-deps
 
-            npm run build >> $LOG_FILE 2>&1
+            echo "========== FRONTEND BUILD =========="
+            npm run build
 
-            pm2 restart hari-event-backend >> $LOG_FILE 2>&1
-            pm2 restart hari-event-frontend >> $LOG_FILE 2>&1
+            echo "========== PM2 BACKEND =========="
+            pm2 restart hari-event-backend
 
-            pm2 save >> $LOG_FILE 2>&1
+            echo "========== PM2 FRONTEND =========="
+            pm2 restart hari-event-frontend
 
-      - name: Rocket.Chat Success Notification
+            pm2 save
+
+      - name: RocketChat Success
         if: success()
         run: |
-          curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -d '{
-              "text":"✅ DEPLOYMENT SUCCESSFUL\n\nRepository : ${{ github.repository }}\nBranch : ${{ github.ref_name }}\nWorkflow : ${{ github.workflow }}\n\nStatus : Production Updated Successfully"
-            }' \
-            "${{ secrets.ROCKETCHAT_WEBHOOK_URL }}"
+          curl -X POST \
+          -H "Content-Type: application/json" \
+          -d "{\"text\":\"✅ DEPLOYMENT SUCCESSFUL\n\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nWorkflow: ${{ github.workflow }}\n\nStatus: Production Updated Successfully\"}" \
+          "${{ secrets.ROCKETCHAT_WEBHOOK_URL }}"
 
-      - name: Rocket.Chat Failure Notification
+      - name: RocketChat Failure
         if: failure()
         run: |
-          curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -d '{
-              "text":"🚨 CI/CD FAILURE\n\nRepository : ${{ github.repository }}\nBranch : ${{ github.ref_name }}\nWorkflow : ${{ github.workflow }}\n\nDeployment Failed"
-            }' \
-            "${{ secrets.ROCKETCHAT_WEBHOOK_URL }}"
+          curl -X POST \
+          -H "Content-Type: application/json" \
+          -d "{\"text\":\"🚨 CI/CD FAILURE\n\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nWorkflow: ${{ github.workflow }}\n\nDeployment Failed\"}" \
+          "${{ secrets.ROCKETCHAT_WEBHOOK_URL }}"
