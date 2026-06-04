@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Deploy and Notify
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -21,7 +20,6 @@ jobs:
           command_timeout: 60m
 
           script: |
-
             REPO="${{ github.repository }}"
             BRANCH="${{ github.ref_name }}"
             WORKFLOW="${{ github.workflow }}"
@@ -32,10 +30,9 @@ jobs:
               STAGE="$1"
               LOGFILE="$2"
 
-              LOGS=$(tail -20 "$LOGFILE")
+              LOGS=$(tail -20 "$LOGFILE" | tr '"' "'" )
 
-              MESSAGE=$(cat <<MSG
-🚨 CI/CD FAILURE
+              TEXT="🚨 CI/CD FAILURE
 
 Repository : $REPO
 Branch     : $BRANCH
@@ -46,20 +43,12 @@ Failed Stage : $STAGE
 Logs
 ----------------------------------------
 $LOGS
-----------------------------------------
-MSG
-)
+----------------------------------------"
 
-              export MESSAGE
-
-              python3 - <<'PY' > /tmp/rocket.json
-import json
-import os
-
-print(json.dumps({
-    "text": os.environ["MESSAGE"]
-}))
-PY
+              python3 -c '
+import json,os
+print(json.dumps({"text": os.environ["TEXT"]}))
+' > /tmp/rocket.json
 
               curl -s \
                 -H "Content-Type: application/json" \
@@ -72,35 +61,25 @@ PY
 
             notify_success() {
 
-              MESSAGE=$(cat <<MSG
-✅ DEPLOYMENT SUCCESSFUL
+              TEXT="✅ DEPLOYMENT SUCCESSFUL
 
 Repository : $REPO
 Branch     : $BRANCH
 Workflow   : $WORKFLOW
 
-Deployment Summary
-----------------------------------------
 Git Pull               : SUCCESS
 Backend Install        : SUCCESS
 Frontend Install       : SUCCESS
 Frontend Build         : SUCCESS
 PM2 Backend Restart    : SUCCESS
-PM2 Frontend Restart   : SUCCESS
-----------------------------------------
-MSG
-)
+PM2 Frontend Restart   : SUCCESS"
 
-              export MESSAGE
+              export TEXT
 
-              python3 - <<'PY' > /tmp/rocket.json
-import json
-import os
-
-print(json.dumps({
-    "text": os.environ["MESSAGE"]
-}))
-PY
+              python3 -c '
+import json,os
+print(json.dumps({"text": os.environ["TEXT"]}))
+' > /tmp/rocket.json
 
               curl -s \
                 -H "Content-Type: application/json" \
